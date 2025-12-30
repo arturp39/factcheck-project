@@ -1,0 +1,50 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  sql:
+    init:
+      mode: never
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+weaviate:
+  base-url: ${WEAVIATE_BASE_URL}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: factcheck-news-collector
+
+nlp-service:
+  url: ${NLP_SERVICE_URL:http://localhost:8000}
+
+ingestion:
+  max-parallel-sources: ${INGESTION_MAX_PARALLEL_SOURCES:1}
+  interval-ms: ${INGESTION_INTERVAL_MS:600000}
+
+crawler:
+  user-agent: ${CRAWLER_USER_AGENT:FactCheckCollector/1.0 (+https://example.com)}
+
+search:
+  embedding-dimension: ${SEARCH_EMBEDDING_DIMENSION:768}

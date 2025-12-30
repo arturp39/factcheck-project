@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>FactCheck Result</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body class="page">
+
+<header class="header">
+    <div class="header-title">FactCheck Assistant</div>
+    <div class="header-subtitle">
+        Result of the last fact-check request.
+    </div>
+</header>
+
+<main class="main">
+
+    <a href="/" class="link-back">&larr; New claim</a>
+
+    <!-- Error (if backend-side issues occurred) -->
+    <div th:if="${error}" class="alert alert-error" th:text="${error}">
+        Error message
+    </div>
+
+    <!-- Claim bubble -->
+    <section class="chat-block">
+        <div class="chat-label">You</div>
+        <div class="chat-bubble chat-bubble-user">
+            <p th:text="${claim}">Claim text</p>
+        </div>
+    </section>
+
+    <!-- Assistant response: verdict + explanation + bias button/section -->
+    <section class="chat-block">
+        <div class="chat-label">Assistant</div>
+        <div class="chat-bubble chat-bubble-assistant">
+
+            <div class="verdict-block">
+                <span class="verdict-label">Verdict:</span>
+                <span class="verdict-value verdict-unknown"
+                      th:text="${verdict} ?: 'unclear'"
+                      th:classappend="${verdict} == 'true' ? ' verdict-true' :
+                                      (${verdict} == 'false' ? ' verdict-false' :
+                                      (${verdict} == 'mixed' ? ' verdict-mixed' :
+                                       ' verdict-unknown'))">
+                    unclear
+                </span>
+            </div>
+
+            <div class="assistant-section">
+                <h3 class="assistant-section-title">Explanation</h3>
+                <p class="assistant-text" th:text="${explanation} ?: 'No explanation available.'">
+                    Explanation text
+                </p>
+            </div>
+
+            <!-- Bias & limitations (Prompt 3) controlled by button -->
+            <div class="assistant-section">
+                <h3 class="assistant-section-title">Evidence bias &amp; limitations</h3>
+
+                <!-- If we already have biasAnalysis -> show it -->
+                <div th:if="${biasAnalysis != null}">
+                    <p class="assistant-text" th:text="${biasAnalysis}">
+                        Bias analysis text
+                    </p>
+
+                    <!-- Optional: allow re-run -->
+                    <form th:if="${claimId}"
+                          th:action="@{'/bias/' + ${claimId}}"
+                          method="post"
+                          class="form-inline">
+                        <button type="submit" class="btn btn-secondary">
+                            Re-analyze bias
+                        </button>
+                    </form>
+                </div>
+
+                <!-- If no biasAnalysis yet -> show button only -->
+                <div th:if="${biasAnalysis == null}">
+                    <p class="muted">
+                        The assistant has not analyzed source bias and limitations yet.
+                    </p>
+                    <form th:if="${claimId}"
+                          th:action="@{'/bias/' + ${claimId}}"
+                          method="post"
+                          class="form-inline">
+                        <button type="submit" class="btn btn-secondary">
+                            Analyze bias &amp; limitations
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ask follow-up question -->
+            <div class="assistant-section">
+                <h3 class="assistant-section-title">Ask a follow-up question</h3>
+                <form th:if="${claimId}" th:action="@{'/followup/' + ${claimId}}" method="post" class="claim-form">
+                    <textarea name="question"
+                              class="form-textarea"
+                              placeholder="Example: Are the sources mostly from one country?"></textarea>
+                    <div class="form-footer">
+                        <button type="submit" class="btn btn-primary">Ask</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Optional: follow-up Q&A bubble -->
+    <section th:if="${followupQuestion}" class="chat-block">
+        <div class="chat-label">You (follow-up)</div>
+        <div class="chat-bubble chat-bubble-user">
+            <p th:text="${followupQuestion}">Follow-up question</p>
+        </div>
+    </section>
+
+    <section th:if="${followupAnswer}" class="chat-block">
+        <div class="chat-label">Assistant</div>
+        <div class="chat-bubble chat-bubble-assistant">
+            <p class="assistant-text" th:text="${followupAnswer}">
+                Follow-up answer text
+            </p>
+        </div>
+    </section>
+
+    <!-- Evidence list -->
+    <section class="card">
+        <h2 class="section-title">Evidence used</h2>
+
+        <div th:if="${#lists.isEmpty(evidence)}">
+            <p class="muted"><i>No evidence found in the vector database.</i></p>
+        </div>
+
+        <div th:if="${!#lists.isEmpty(evidence)}">
+            <ul class="evidence-list">
+                <li th:each="a : ${evidence}" class="evidence-item">
+                    <div class="evidence-title" th:text="${a.title}">Article title</div>
+                    <div class="evidence-source" th:text="${a.source}">Source name</div>
+                    <p class="evidence-text" th:text="${a.content}">
+                        Article content snippet
+                    </p>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+</main>
+
+</body>
+</html>

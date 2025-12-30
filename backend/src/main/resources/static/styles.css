@@ -1,0 +1,293 @@
+/* Base page layout */
+
+.page {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #f3f5f7;
+    margin: 0;
+    padding: 0;
+    color: #202124;
+}
+
+.header {
+    max-width: 900px;
+    margin: 24px auto 8px;
+    padding: 0 16px;
+}
+
+.header-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.header-subtitle {
+    font-size: 14px;
+    color: #5f6368;
+}
+
+.main {
+    max-width: 900px;
+    margin: 0 auto 40px;
+    padding: 0 16px 16px;
+}
+
+/* Cards / sections */
+
+.card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e0e3e7;
+    padding: 16px 18px;
+    margin-top: 16px;
+}
+
+.card-hint {
+    background-color: #f8fafc;
+}
+
+.section-title {
+    font-size: 18px;
+    margin: 0 0 12px;
+}
+
+.section-subtitle {
+    font-size: 15px;
+    margin: 0 0 8px;
+}
+
+/* Alerts */
+
+.alert {
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.alert-error {
+    background-color: #fdecea;
+    border: 1px solid #f5c2c0;
+    color: #b3261e;
+}
+
+/* Form */
+
+.claim-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.form-textarea {
+    min-height: 100px;
+    resize: vertical;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #c7ccd1;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: #1967d2;
+    box-shadow: 0 0 0 1px rgba(25, 103, 210, 0.15);
+}
+
+.form-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: #1967d2;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: #1557b0;
+}
+
+/* Loading indicator */
+
+.loading {
+    font-size: 14px;
+    color: #5f6368;
+    margin-top: 12px;
+}
+
+/* Back link */
+
+.link-back {
+    display: inline-block;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    text-decoration: none;
+    color: #1967d2;
+}
+
+.link-back:hover {
+    text-decoration: underline;
+}
+
+/* Chat-style blocks */
+
+.chat-block {
+    margin-top: 16px;
+}
+
+.chat-label {
+    font-size: 12px;
+    color: #5f6368;
+    margin-left: 2px;
+    margin-bottom: 4px;
+}
+
+.chat-bubble {
+    max-width: 100%;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    border: 1px solid transparent;
+}
+
+.chat-bubble-user {
+    background-color: #e8f0fe;
+    border-color: #c6dafc;
+    align-self: flex-start;
+}
+
+.chat-bubble-assistant {
+    background-color: #ffffff;
+    border-color: #e0e3e7;
+}
+
+/* Verdict styling */
+
+.verdict-block {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.verdict-label {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.verdict-value {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+/* Color codes for verdicts */
+.verdict-true {
+    background-color: #e6f4ea;
+    color: #137333;
+}
+
+.verdict-false {
+    background-color: #fce8e6;
+    color: #b3261e;
+}
+
+.verdict-mixed {
+    background-color: #fff4e5;
+    color: #8f5c00;
+}
+
+.verdict-unknown {
+    background-color: #f1f3f4;
+    color: #5f6368;
+}
+
+/* Assistant sections inside bubble */
+
+.assistant-section {
+    margin-top: 10px;
+}
+
+.assistant-section-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.assistant-text {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Evidence list */
+
+.evidence-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.evidence-item {
+    border: 1px solid #e0e3e7;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background-color: #ffffff;
+}
+
+.evidence-title {
+    font-weight: 500;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.evidence-source {
+    font-size: 12px;
+    color: #5f6368;
+    margin-bottom: 6px;
+}
+
+.evidence-text {
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Misc */
+
+.hint-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+}
+
+.muted {
+    color: #5f6368;
+}
+
+.raw-response {
+    background-color: #111827;
+    color: #e5e7eb;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    overflow-x: auto;
+}

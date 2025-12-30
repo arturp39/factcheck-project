@@ -1,0 +1,66 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/factcheck}
+    username: ${SPRING_DATASOURCE_USERNAME:factcheck}
+    password: ${SPRING_DATASOURCE_PASSWORD:factcheck}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate:
+        format_sql: true
+
+    show-sql: false
+
+  sql:
+    init:
+      mode: never
+
+# Vertex AI settings
+vertex:
+  project-id: ${VERTEX_PROJECT_ID}
+  location: ${VERTEX_LOCATION:us-central1}
+  model-name: ${VERTEX_MODEL_NAME:gemini-2.5-flash}
+  credentials-path: ${VERTEX_CREDENTIALS_PATH:}
+
+# Weaviate cfg
+weaviate:
+  base-url: ${WEAVIATE_BASE_URL:http://localhost:8082}
+  api-key: ${WEAVIATE_API_KEY:}
+  max-distance: ${WEAVIATE_MAX_DISTANCE:0.5}
+
+logging:
+  level:
+    root: INFO
+    com.example.demo: DEBUG
+    com.example.demo.service.VertexAiService: DEBUG
+    com.example.demo.service.VertexApiClient: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%X{corrId}] %logger{36} - %msg%n"
+
+nlp-service:
+  url: ${NLP_SERVICE_URL:http://localhost:8000}
+
+app:
+  claim:
+    max-length: ${APP_CLAIM_MAX_LENGTH:400}
+  search:
+    top-k: ${APP_SEARCH_TOP_K:5}
+  restclient:
+    connect-timeout-ms: ${APP_REST_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${APP_REST_READ_TIMEOUT_MS:30000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

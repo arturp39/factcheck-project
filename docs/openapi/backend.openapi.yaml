@@ -1,0 +1,419 @@
+openapi: 3.0.3
+info:
+  title: FactCheck Backend API
+  version: "1.0.0"
+  description: >
+    HTTP API for claim verification, evidence retrieval, follow-ups, and bias analysis.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://api.factcheck.local
+    description: Default server
+security: []
+tags:
+  - name: claims
+    description: Claim verification and retrieval
+paths:
+  /api/claims/verify:
+    post:
+      tags: [claims]
+      summary: Verify a claim
+      operationId: verifyClaim
+      description: Triggers embedding + vector search + LLM fact-check and stores the result.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+            examples:
+              basic:
+                value:
+                  claim: "The Eiffel Tower is taller than 400 meters."
+      responses:
+        "200":
+          description: Claim verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+              examples:
+                ok:
+                  value:
+                    correlationId: "b0fa3ed7-9589-4ab5-91a4-6101b22e3c5d"
+                    claimId: 42
+                    claim: "The Eiffel Tower is taller than 400 meters."
+                    verdict: "false"
+                    explanation: "The Eiffel Tower is 330m tall including antennas."
+                    evidence:
+                      - title: "Eiffel Tower Facts"
+                        content: "Height 330 meters including antennas."
+                        source: "wikipedia"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims:
+    get:
+      tags: [claims]
+      summary: List claim logs
+      operationId: listClaims
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+      responses:
+        "200":
+          description: Paginated claims
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimsPageResponse'
+              examples:
+                page:
+                  value:
+                    correlationId: "a1"
+                    page: 0
+                    size: 2
+                    totalElements: 25
+                    totalPages: 13
+                    items:
+                      - claimId: 41
+                        claim: "The Moon has no gravity."
+                        createdAt: "2025-12-18T08:22:01Z"
+                        verdict: "false"
+                        explanation: "Moon has 1/6th Earth gravity."
+                      - claimId: 40
+                        claim: "Water boils at 100C at sea level."
+                        createdAt: "2025-12-18T07:55:11Z"
+                        verdict: "true"
+                        explanation: "Boiling point 100C at 1 atm."
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims/{id}:
+    get:
+      tags: [claims]
+      summary: Get a claim
+      operationId: getClaim
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        "200":
+          description: Claim details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims/{id}/evidence:
+    get:
+      tags: [claims]
+      summary: Re-run evidence search for a claim
+      operationId: getClaimEvidence
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        "200":
+          description: Evidence list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims/{id}/followup:
+    post:
+      tags: [claims]
+      summary: Ask a follow-up question
+      operationId: followupClaim
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ClaimId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowupRequest'
+            examples:
+              basic:
+                value:
+                  question: "What sources did you use?"
+      responses:
+        "200":
+          description: Follow-up answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowupResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims/{id}/bias:
+    post:
+      tags: [claims]
+      summary: Bias analysis for a claim
+      operationId: biasClaim
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        "200":
+          description: Bias analysis text
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiasResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /actuator/health:
+    get:
+      summary: Health check
+      operationId: backendHealth
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    CorrelationId:
+      in: header
+      name: X-Correlation-Id
+      required: false
+      description: Client-supplied correlation ID; autogenerated if omitted.
+      schema:
+        type: string
+    ClaimId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            empty-claim:
+              value:
+                timestamp: "2025-12-19T08:00:00Z"
+                status: 400
+                error: "Bad Request"
+                message: "Claim must not be empty."
+                path: "/api/claims/verify"
+                correlationId: "abc-123"
+  schemas:
+    Article:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        source:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+      required: [title, content, source]
+    VerifyRequest:
+      type: object
+      required: [claim]
+      properties:
+        claim:
+          type: string
+          maxLength: 400
+    VerifyResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        verdict:
+          type: string
+          enum: ["true", "false", "mixed", "unclear"]
+        explanation:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+      required: [correlationId, claimId, claim, verdict, explanation, evidence]
+    ClaimSummary:
+      type: object
+      properties:
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        verdict:
+          type: string
+        explanation:
+          type: string
+    ClaimsPageResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimSummary'
+      required: [correlationId, page, size, totalElements, totalPages, items]
+    ClaimResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        verdict:
+          type: string
+        explanation:
+          type: string
+        biasAnalysis:
+          type: string
+        modelAnswer:
+          type: string
+      required: [correlationId, claimId, claim, createdAt, verdict, explanation]
+    EvidenceResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+      required: [correlationId, claimId, claim, evidence]
+    FollowupRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+    FollowupResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        verdict:
+          type: string
+        explanation:
+          type: string
+        biasAnalysis:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+        question:
+          type: string
+        answer:
+          type: string
+      required:
+        [correlationId, claimId, claim, verdict, explanation, evidence, question, answer]
+    BiasResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        verdict:
+          type: string
+        biasAnalysis:
+          type: string
+      required: [correlationId, claimId, claim, verdict, biasAnalysis]
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        correlationId:
+          type: string
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string

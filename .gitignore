@@ -1,0 +1,59 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors/IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Environment & secrets
+.env
+.env.*
+*.env
+*.pem
+*.key
+
+# Logs & temp
+*.log
+logs/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.coverage
+htmlcov/
+.python-version
+venv/
+.venv/
+env/
+.envrc
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Java/Maven
+target/
+dependency-reduced-pom.xml
+release.properties
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+
+# Node
+node_modules/
+

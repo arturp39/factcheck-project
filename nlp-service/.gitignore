@@ -1,0 +1,58 @@
+# Python standard
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+
+# Virtual environments
+venv/
+.env/
+.envrc
+venv.bak/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Bytecode + cache
+*.cache
+*.log
+
+# FastAPI / Uvicorn
+*.db.sqlite3
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PyCharm / VSCode
+.idea/
+.vscode/
+*.iml
+
+
+# Python dependency layers
+pip-wheel-metadata/
+build/
+dist/
+
+# Security-sensitive files
+.env
+*.env
+.env.*
+# GCP credentials (DO NOT EVER COMMIT)
+*.json
+gcloud-service-key.json
+credentials.json
+
+# Tests & coverage
+.coverage
+htmlcov/
+pytest_cache/
+
+# Packaging
+*.egg-info/
+*.egg

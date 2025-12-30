@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>FactCheck Assistant</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body class="page">
+
+<header class="header">
+    <div class="header-title">FactCheck Assistant</div>
+    <div class="header-subtitle">
+        Enter a factual claim and the assistant will search recent news,
+        retrieve evidence and ask an LLM to evaluate it.
+    </div>
+</header>
+
+<main class="main">
+
+    <!-- Error message (validation, backend errors, etc.) -->
+    <div th:if="${error}" class="alert alert-error" th:text="${error}">
+        Error message
+    </div>
+
+    <!-- Loading indicator (simple, controlled by JS) -->
+    <div id="loading" class="loading" style="display: none;">
+        Checking your claim, please wait...
+    </div>
+
+    <section class="card">
+        <h2 class="section-title">New fact-check</h2>
+
+        <form action="#" th:action="@{/verify}" method="post" class="claim-form">
+            <label for="claim" class="form-label">Enter factual claim:</label>
+            <textarea id="claim"
+                      name="claim"
+                      class="form-textarea"
+                      placeholder="Example: The UK Ministry of Defence is planning to unify all intelligence units under a single command."
+                      required></textarea>
+
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary">Verify</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card-hint">
+        <h3 class="section-subtitle">Tips for good claims</h3>
+        <ul class="hint-list">
+            <li>Use concrete, factual statements (who / what / when / where).</li>
+            <li>Avoid very broad or vague opinions (e.g. "This politician is bad").</li>
+            <li>Keep the claim under 2-3 sentences for best results.</li>
+        </ul>
+    </section>
+
+</main>
+
+<script>
+    (function () {
+        const form = document.querySelector('.claim-form');
+        const loading = document.getElementById('loading');
+
+        if (form && loading) {
+            form.addEventListener('submit', function () {
+                loading.style.display = 'block';
+            });
+        }
+    })();
+</script>
+
+</body>
+</html>

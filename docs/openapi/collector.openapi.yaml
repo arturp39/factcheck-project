@@ -1,0 +1,514 @@
+openapi: 3.0.3
+info:
+  title: FactCheck Collector API
+  version: "1.0.0"
+  description: >
+    Admin and internal APIs for ingestion runs, sources, and article search/content.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://collector.factcheck.local
+    description: Default server
+security: []
+tags:
+  - name: ingestion
+    description: Trigger and monitor ingestion runs
+  - name: sources
+    description: Manage news sources
+  - name: internal-articles
+    description: Internal search and content access
+paths:
+  /admin/ingestion/run:
+    post:
+      tags: [ingestion]
+      summary: Trigger ingestion for all enabled sources
+      operationId: triggerIngestionAll
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdQuery'
+      responses:
+        "200":
+          description: Ingestion started
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Ingestion started, correlationId=123e4567-e89b-12d3-a456-426614174000"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /admin/ingestion/run/{sourceId}:
+    post:
+      tags: [ingestion]
+      summary: Trigger ingestion for a specific source
+      operationId: triggerIngestionForSource
+      parameters:
+        - $ref: '#/components/parameters/SourceId'
+        - $ref: '#/components/parameters/CorrelationIdQuery'
+      responses:
+        "200":
+          description: Ingestion started for source
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Ingestion started for sourceId=7, correlationId=..."
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /admin/ingestion/logs:
+    get:
+      tags: [ingestion]
+      summary: List ingestion runs
+      operationId: listIngestionLogs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        "200":
+          description: Paginated ingestion runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionLogPageResponse'
+              examples:
+                page:
+                  value:
+                    page: 0
+                    size: 2
+                    totalElements: 12
+                    totalPages: 6
+                    items:
+                      - id: 10
+                        sourceId: 3
+                        sourceName: "BBC News - World"
+                        startedAt: "2025-12-19T08:00:00Z"
+                        completedAt: "2025-12-19T08:00:14Z"
+                        articlesFetched: 25
+                        articlesProcessed: 25
+                        articlesFailed: 0
+                        status: "SUCCESS"
+                        correlationId: "abc"
+                      - id: 9
+                        sourceId: 2
+                        sourceName: "NPR Top Stories"
+                        startedAt: "2025-12-19T07:40:00Z"
+                        completedAt: "2025-12-19T07:40:20Z"
+                        articlesFetched: 30
+                        articlesProcessed: 28
+                        articlesFailed: 2
+                        status: "PARTIAL"
+                        correlationId: "def"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /admin/ingestion/runs/{id}:
+    get:
+      tags: [ingestion]
+      summary: Get an ingestion run
+      operationId: getIngestionRun
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        "200":
+          description: Ingestion run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionRunResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /admin/sources:
+    get:
+      tags: [sources]
+      summary: List sources
+      operationId: listSources
+      responses:
+        "200":
+          description: Sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [sources]
+      summary: Create a source
+      operationId: createSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceCreateRequest'
+            examples:
+              rss:
+                value:
+                  name: "Reuters Top News"
+                  type: "RSS"
+                  url: "https://feeds.reuters.com/reuters/topNews"
+                  category: "world"
+                  enabled: true
+                  reliabilityScore: 0.8
+      responses:
+        "200":
+          description: Created source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /admin/sources/{id}:
+    patch:
+      tags: [sources]
+      summary: Update a source
+      operationId: updateSource
+      parameters:
+        - $ref: '#/components/parameters/SourcePathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceUpdateRequest'
+            examples:
+              disable:
+                value:
+                  enabled: false
+      responses:
+        "200":
+          description: Updated source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /internal/articles/search:
+    post:
+      tags: [internal-articles]
+      summary: Vector search for article chunks
+      operationId: searchArticleChunks
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+            examples:
+              basic:
+                value:
+                  embedding: [0.1, 0.2, 0.3, 0.4]
+                  limit: 5
+                  minScore: 0.7
+                  filters:
+                    sourceName: ["BBC News - World"]
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /internal/articles/{id}:
+    get:
+      tags: [internal-articles]
+      summary: Get article metadata
+      operationId: getArticleMetadata
+      parameters:
+        - $ref: '#/components/parameters/ArticleId'
+      responses:
+        "200":
+          description: Article metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleMetadataResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /internal/articles/{id}/content:
+    get:
+      tags: [internal-articles]
+      summary: Get article content
+      operationId: getArticleContent
+      parameters:
+        - $ref: '#/components/parameters/ArticleId'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        "200":
+          description: Article content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleContentResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /actuator/health:
+    get:
+      summary: Health check
+      operationId: collectorHealth
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    CorrelationIdQuery:
+      in: query
+      name: correlationId
+      schema:
+        type: string
+      required: false
+      description: Optional correlation ID; autogenerated if omitted.
+    CorrelationIdHeader:
+      in: header
+      name: X-Correlation-Id
+      schema:
+        type: string
+      required: false
+      description: Optional correlation ID; autogenerated if omitted.
+    Page:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      in: query
+      name: size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    SourceId:
+      in: path
+      name: sourceId
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SourcePathId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RunId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ArticleId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+  responses:
+    BadRequest:
+      description: Validation or domain error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            timestamp: "2025-12-19T08:00:00Z"
+            status: 400
+            error: "Bad Request"
+            message: "page must be >= 0"
+            path: "/admin/ingestion/logs"
+            correlationId: "abc"
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        correlationId:
+          type: string
+    IngestionRunResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sourceId: { type: integer, format: int64 }
+        sourceName: { type: string }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        articlesFetched: { type: integer }
+        articlesProcessed: { type: integer }
+        articlesFailed: { type: integer }
+        status: { type: string, enum: [RUNNING, SUCCESS, PARTIAL, FAILED] }
+        errorDetails: { type: string, nullable: true }
+        correlationId: { type: string }
+      required: [id, startedAt, articlesFetched, articlesProcessed, articlesFailed, status, correlationId]
+    IngestionLogPageResponse:
+      type: object
+      properties:
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngestionRunResponse'
+      required: [page, size, totalElements, totalPages, items]
+    SourceCreateRequest:
+      type: object
+      required: [name, type, url]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [RSS, API, HTML] }
+        url: { type: string }
+        category: { type: string, default: "general" }
+        enabled: { type: boolean, default: true }
+        reliabilityScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+    SourceUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [RSS, API, HTML] }
+        url: { type: string }
+        category: { type: string }
+        enabled: { type: boolean }
+        reliabilityScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+    SourceResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { type: string }
+        url: { type: string }
+        category: { type: string }
+        enabled: { type: boolean }
+        reliabilityScore: { type: number, format: double }
+        lastFetchedAt: { type: string, format: date-time, nullable: true }
+        lastSuccessAt: { type: string, format: date-time, nullable: true }
+        failureCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, type, url, category, enabled, reliabilityScore, failureCount, createdAt, updatedAt]
+    SearchFilters:
+      type: object
+      properties:
+        sourceName:
+          type: array
+          items:
+            type: string
+        publishedAfter:
+          type: string
+          format: date-time
+        publishedBefore:
+          type: string
+          format: date-time
+    SearchRequest:
+      type: object
+      required: [embedding]
+      properties:
+        embedding:
+          type: array
+          items:
+            type: number
+            format: float
+          minItems: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+        minScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.7
+        filters:
+          $ref: '#/components/schemas/SearchFilters'
+    ChunkResult:
+      type: object
+      properties:
+        text: { type: string }
+        articleId: { type: integer, format: int64 }
+        articleUrl: { type: string }
+        articleTitle: { type: string }
+        sourceName: { type: string }
+        publishedDate: { type: string, format: date-time }
+        chunkIndex: { type: integer }
+        score: { type: number, format: float }
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChunkResult'
+        totalFound: { type: integer }
+        executionTimeMs: { type: integer }
+        correlationId: { type: string }
+      required: [results, totalFound, executionTimeMs]
+    ArticleMetadataResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sourceId: { type: integer, format: int64 }
+        sourceName: { type: string }
+        externalUrl: { type: string }
+        title: { type: string }
+        publishedDate: { type: string, format: date-time }
+        chunkCount: { type: integer }
+        status: { type: string }
+        weaviateIndexed: { type: boolean }
+    ArticleContentResponse:
+      type: object
+      properties:
+        articleId: { type: integer, format: int64 }
+        sourceId: { type: integer, format: int64 }
+        sourceName: { type: string }
+        externalUrl: { type: string }
+        title: { type: string }
+        publishedDate: { type: string, format: date-time }
+        content: { type: string }
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string }
+        service: { type: string }
