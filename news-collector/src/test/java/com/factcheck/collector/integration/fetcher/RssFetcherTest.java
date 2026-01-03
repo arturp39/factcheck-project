@@ -1,7 +1,8 @@
 package com.factcheck.collector.integration.fetcher;
 
-import com.factcheck.collector.domain.entity.Source;
-import com.factcheck.collector.domain.enums.SourceType;
+import com.factcheck.collector.domain.entity.Publisher;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
+import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.exception.FetchException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -71,13 +72,15 @@ class RssFetcherTest {
         RssFetcher fetcher = new RssFetcher(extractor);
         ReflectionTestUtils.setField(fetcher, "userAgent", "TestAgent/1.0");
 
-        Source source = Source.builder()
+        Publisher publisher = Publisher.builder().id(10L).name("Test Publisher").build();
+        SourceEndpoint endpoint = SourceEndpoint.builder()
                 .id(1L)
-                .type(SourceType.RSS)
-                .url(baseUrl + "/feed")
+                .publisher(publisher)
+                .kind(SourceKind.RSS)
+                .rssUrl(baseUrl + "/feed")
                 .build();
 
-        List<RawArticle> articles = fetcher.fetch(source);
+        List<RawArticle> articles = fetcher.fetch(endpoint);
 
         assertThat(articles).hasSize(2);
         assertThat(articles.getFirst().getExternalUrl()).contains("/article-1");
@@ -93,15 +96,17 @@ class RssFetcherTest {
 
         ArticleContentExtractor extractor = Mockito.mock(ArticleContentExtractor.class);
         RssFetcher fetcher = new RssFetcher(extractor);
-        Source source = Source.builder()
+        Publisher publisher = Publisher.builder().id(11L).name("Test Publisher").build();
+        SourceEndpoint endpoint = SourceEndpoint.builder()
                 .id(2L)
-                .type(SourceType.RSS)
-                .url(baseUrl + "/feed")
+                .publisher(publisher)
+                .kind(SourceKind.RSS)
+                .rssUrl(baseUrl + "/feed")
                 .build();
 
         ReflectionTestUtils.setField(fetcher, "userAgent", "TestAgent/1.0");
 
-        assertThatThrownBy(() -> fetcher.fetch(source))
+        assertThatThrownBy(() -> fetcher.fetch(endpoint))
                 .isInstanceOf(FetchException.class)
                 .hasMessageContaining("Failed to fetch RSS from");
     }

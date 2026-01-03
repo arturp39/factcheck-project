@@ -4,8 +4,10 @@ import java.time.Instant;
 
 public record IngestionRunResponse(
         Long id,
-        Long sourceId,
-        String sourceName,
+        Long sourceEndpointId,
+        String sourceEndpointName,
+        Long publisherId,
+        String publisherName,
         Instant startedAt,
         Instant completedAt,
         int articlesFetched,

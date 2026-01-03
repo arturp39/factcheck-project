@@ -1,6 +1,6 @@
 package com.factcheck.collector.controller;
 
-import com.factcheck.collector.domain.enums.SourceType;
+import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.dto.SourceResponse;
 import com.factcheck.collector.service.SourceService;
 import org.junit.jupiter.api.Test;
@@ -31,8 +31,8 @@ class SourceAdminControllerTest {
     @Test
     void listSources_returnsSources() throws Exception {
         SourceResponse s = new SourceResponse(
-                1L, "BBC", SourceType.RSS, "https://example.com/rss", "top",
-                true, 0.85, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                1L, 10L, "BBC News", SourceKind.RSS, "BBC - Top", "https://example.com/rss",
+                null, null, true, 15, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
         );
 
         when(sourceService.listSources()).thenReturn(List.of(s));
@@ -40,26 +40,26 @@ class SourceAdminControllerTest {
         mockMvc.perform(get("/admin/sources"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].type").value("RSS"));
+                .andExpect(jsonPath("$[0].kind").value("RSS"));
     }
 
     @Test
     void createSource_createsSource() throws Exception {
         SourceResponse saved = new SourceResponse(
-                2L, "NPR", SourceType.RSS, "https://npr.org/rss", "top",
-                true, 0.8, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                2L, 20L, "NPR", SourceKind.RSS, "NPR - Top Stories", "https://npr.org/rss",
+                null, null, true, 15, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
         );
 
         when(sourceService.createSource(org.mockito.ArgumentMatchers.any())).thenReturn(saved);
 
         String payload = """
                 {
-                  "name": "NPR",
-                  "type": "RSS",
-                  "url": "https://npr.org/rss",
-                  "category": "top",
+                  "publisherName": "NPR",
+                  "kind": "RSS",
+                  "displayName": "NPR - Top Stories",
+                  "rssUrl": "https://npr.org/rss",
                   "enabled": true,
-                  "reliabilityScore": 0.8
+                  "fetchIntervalMinutes": 15
                 }
                 """;
 
@@ -68,21 +68,21 @@ class SourceAdminControllerTest {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(2L))
-                .andExpect(jsonPath("$.name").value("NPR"));
+                .andExpect(jsonPath("$.publisherName").value("NPR"));
     }
 
     @Test
     void updateSource_updatesFields() throws Exception {
         SourceResponse updated = new SourceResponse(
-                3L, "Old", SourceType.RSS, "https://old", "new",
-                false, 0.5, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                3L, 30L, "Old", SourceKind.RSS, "Old Feed", "https://old",
+                null, null, false, 60, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
         );
 
         when(sourceService.updateSource(org.mockito.ArgumentMatchers.eq(3L), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(updated);
 
         String payload = """
-                { "enabled": false, "category": "new" }
+                { "enabled": false, "fetchIntervalMinutes": 60 }
                 """;
 
         mockMvc.perform(patch("/admin/sources/{id}", 3L)
@@ -90,6 +90,6 @@ class SourceAdminControllerTest {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(false))
-                .andExpect(jsonPath("$.category").value("new"));
+                .andExpect(jsonPath("$.fetchIntervalMinutes").value(60));
     }
 }

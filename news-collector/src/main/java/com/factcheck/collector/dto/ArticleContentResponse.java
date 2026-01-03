@@ -10,10 +10,12 @@ import java.time.Instant;
 public class ArticleContentResponse {
 
     private Long articleId;
-    private Long sourceId;
-    private String sourceName;
+    private Long publisherId;
+    private String publisherName;
+    private Long sourceEndpointId;
+    private String sourceEndpointName;
 
-    private String externalUrl;
+    private String canonicalUrl;
     private String title;
     private Instant publishedDate;
     private String content;

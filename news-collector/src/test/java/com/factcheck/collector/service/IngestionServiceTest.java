@@ -1,7 +1,7 @@
 package com.factcheck.collector.service;
 
-import com.factcheck.collector.domain.entity.Source;
-import com.factcheck.collector.repository.SourceRepository;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
+import com.factcheck.collector.repository.SourceEndpointRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 class IngestionServiceTest {
 
     @Mock
-    private SourceRepository sourceRepository;
+    private SourceEndpointRepository sourceEndpointRepository;
 
     @Mock
     private SourceIngestionService sourceIngestionService;
@@ -35,7 +35,7 @@ class IngestionServiceTest {
 
     @Test
     void ingestAllSourcesReturnsWhenNoneEnabled() {
-        when(sourceRepository.findByEnabledTrue()).thenReturn(List.of());
+        when(sourceEndpointRepository.findByEnabledTrue()).thenReturn(List.of());
 
         ingestionService.ingestAllSources("corr-none");
 
@@ -44,9 +44,9 @@ class IngestionServiceTest {
 
     @Test
     void ingestAllSourcesProcessesEachEnabledSource() {
-        Source sourceOne = Source.builder().id(1L).build();
-        Source sourceTwo = Source.builder().id(2L).build();
-        when(sourceRepository.findByEnabledTrue()).thenReturn(List.of(sourceOne, sourceTwo));
+        SourceEndpoint sourceOne = SourceEndpoint.builder().id(1L).build();
+        SourceEndpoint sourceTwo = SourceEndpoint.builder().id(2L).build();
+        when(sourceEndpointRepository.findByEnabledTrue()).thenReturn(List.of(sourceOne, sourceTwo));
 
         ingestionService.ingestAllSources("corr-all");
 

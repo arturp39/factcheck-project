@@ -16,8 +16,6 @@ services:
     volumes:
       # Persistent DB storage.
       - postgres_data:/var/lib/postgresql/data
-      # init scripts for db.
-      - ../factcheck_db/init:/docker-entrypoint-initdb.d:ro
     networks:
       # Isolated internal network for inter-container traffic.
       - factcheck_net
@@ -67,7 +65,7 @@ services:
   nlp:
     # Embeddings and NLP preprocessing service. Built locally from ../factcheck-nlp-service.
     build:
-      context: ../factcheck-nlp-service
+      context: ../nlp-service
     image: factcheck-nlp:${IMAGE_TAG:-dev}
     container_name: factcheck-nlp
     env_file:
@@ -118,7 +116,7 @@ services:
   backend:
     # Main API backend (Spring Boot). Built from ../factcheck-backend.
     build:
-      context: ../factcheck-backend
+      context: ../backend
     image: factcheck-backend:${IMAGE_TAG:-dev}
     container_name: factcheck-backend
     env_file:
@@ -160,7 +158,7 @@ services:
   collector:
     # collector (Spring Boot). Built locally from ../factcheck-news-collector.
     build:
-      context: ../factcheck-news-collector
+      context: ../news-collector
     image: factcheck-collector:${IMAGE_TAG:-dev}
     container_name: factcheck-collector
     env_file:

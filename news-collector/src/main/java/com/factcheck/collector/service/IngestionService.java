@@ -1,7 +1,7 @@
 package com.factcheck.collector.service;
 
-import com.factcheck.collector.domain.entity.Source;
-import com.factcheck.collector.repository.SourceRepository;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
+import com.factcheck.collector.repository.SourceEndpointRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -17,28 +17,28 @@ import java.util.concurrent.*;
 @RequiredArgsConstructor
 public class IngestionService {
 
-    private final SourceRepository sourceRepository;
+    private final SourceEndpointRepository sourceEndpointRepository;
     private final SourceIngestionService sourceIngestionService;
 
     @Value("${ingestion.max-parallel-sources:3}")
     private int maxParallelSources;
 
     public void ingestAllSources(String correlationId) {
-        List<Source> sources = sourceRepository.findByEnabledTrue();
-        if (sources.isEmpty()) {
+        List<SourceEndpoint> endpoints = sourceEndpointRepository.findByEnabledTrue();
+        if (endpoints.isEmpty()) {
             log.info("No enabled sources to ingest, correlationId={}", correlationId);
             return;
         }
 
         log.info("Starting ingestion for {} sources, correlationId={}",
-                sources.size(), correlationId);
+                endpoints.size(), correlationId);
 
         ExecutorService executor = Executors.newFixedThreadPool(maxParallelSources);
         List<Future<?>> futures = new ArrayList<>();
 
-        for (Source source : sources) {
+        for (SourceEndpoint endpoint : endpoints) {
             futures.add(executor.submit(() ->
-                    sourceIngestionService.ingestSingleSource(source, correlationId)));
+                    sourceIngestionService.ingestSingleSource(endpoint, correlationId)));
         }
 
         executor.shutdown();
@@ -58,12 +58,12 @@ public class IngestionService {
     }
 
     public void ingestSource(Long sourceId, String correlationId) {
-        Source source = sourceRepository.findById(sourceId)
-                .orElseThrow(() -> new EmptyResultDataAccessException("Source not found: " + sourceId, 1));
+        SourceEndpoint endpoint = sourceEndpointRepository.findById(sourceId)
+                .orElseThrow(() -> new EmptyResultDataAccessException("Source endpoint not found: " + sourceId, 1));
 
-        log.info("Starting ingestion for sourceId={} name={} correlationId={}",
-                source.getId(), source.getName(), correlationId);
+        log.info("Starting ingestion for sourceEndpointId={} name={} correlationId={}",
+                endpoint.getId(), endpoint.getDisplayName(), correlationId);
 
-        sourceIngestionService.ingestSingleSource(source, correlationId);
+        sourceIngestionService.ingestSingleSource(endpoint, correlationId);
     }
 }

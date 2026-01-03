@@ -70,7 +70,7 @@ class IngestionControllerTest {
         mockMvc.perform(post("/admin/ingestion/run/{sourceId}", 10L)
                         .param("correlationId", "cid-1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Ingestion started for sourceId=10, correlationId=cid-1"));
+                .andExpect(content().string("Ingestion started for sourceEndpointId=10, correlationId=cid-1"));
 
         verify(ingestionService).ingestSource(10L, "cid-1");
     }
@@ -78,7 +78,7 @@ class IngestionControllerTest {
     @Test
     void listLogs_returnsPage() throws Exception {
         IngestionRunResponse run = new IngestionRunResponse(
-                5L, 1L, "BBC",
+                5L, 1L, "BBC Feed", 10L, "BBC",
                 Instant.parse("2025-01-01T00:00:00Z"),
                 Instant.parse("2025-01-01T01:00:00Z"),
                 1, 1, 0,
@@ -94,14 +94,15 @@ class IngestionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(5L))
-                .andExpect(jsonPath("$.items[0].sourceId").value(1L))
-                .andExpect(jsonPath("$.items[0].sourceName").value("BBC"));
+                .andExpect(jsonPath("$.items[0].sourceEndpointId").value(1L))
+                .andExpect(jsonPath("$.items[0].sourceEndpointName").value("BBC Feed"))
+                .andExpect(jsonPath("$.items[0].publisherName").value("BBC"));
     }
 
     @Test
     void getRun_returnsRun() throws Exception {
         IngestionRunResponse run = new IngestionRunResponse(
-                7L, 2L, "NPR",
+                7L, 2L, "NPR Feed", 20L, "NPR",
                 null, null,
                 0, 0, 0,
                 "PARTIAL",
@@ -114,7 +115,7 @@ class IngestionControllerTest {
         mockMvc.perform(get("/admin/ingestion/runs/{id}", 7L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7L))
-                .andExpect(jsonPath("$.sourceId").value(2L))
+                .andExpect(jsonPath("$.sourceEndpointId").value(2L))
                 .andExpect(jsonPath("$.status").value("PARTIAL"));
     }
 }

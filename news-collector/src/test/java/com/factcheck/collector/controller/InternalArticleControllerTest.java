@@ -1,13 +1,16 @@
 package com.factcheck.collector.controller;
 
 import com.factcheck.collector.domain.entity.Article;
-import com.factcheck.collector.domain.entity.Source;
+import com.factcheck.collector.domain.entity.ArticleSource;
+import com.factcheck.collector.domain.entity.Publisher;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.domain.enums.ArticleStatus;
 import com.factcheck.collector.dto.ArticleContentResponse;
 import com.factcheck.collector.dto.ArticleMetadataResponse;
 import com.factcheck.collector.dto.SearchRequest;
 import com.factcheck.collector.dto.SearchResponse;
 import com.factcheck.collector.repository.ArticleRepository;
+import com.factcheck.collector.repository.ArticleSourceRepository;
 import com.factcheck.collector.service.ArticleContentService;
 import com.factcheck.collector.service.ArticleSearchService;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,9 @@ class InternalArticleControllerTest {
 
     @MockitoBean
     private ArticleRepository articleRepository;
+
+    @MockitoBean
+    private ArticleSourceRepository articleSourceRepository;
 
     @MockitoBean
     private ArticleSearchService articleSearchService;
@@ -81,15 +87,22 @@ class InternalArticleControllerTest {
 
     @Test
     void getArticle_returnsMappedMetadataResponse() throws Exception {
-        Source source = Source.builder()
+        Publisher publisher = Publisher.builder()
                 .id(10L)
                 .name("Guardian")
                 .build();
 
+        SourceEndpoint endpoint = SourceEndpoint.builder()
+                .id(20L)
+                .publisher(publisher)
+                .displayName("Guardian RSS")
+                .build();
+
         Article article = Article.builder()
                 .id(1L)
-                .source(source)
-                .externalUrl("https://example.com")
+                .publisher(publisher)
+                .canonicalUrl("https://example.com")
+                .canonicalUrlHash("hash")
                 .title("Title")
                 .publishedDate(Instant.parse("2024-01-01T00:00:00Z"))
                 .chunkCount(5)
@@ -98,15 +111,30 @@ class InternalArticleControllerTest {
                 .build();
 
         when(articleRepository.findById(1L)).thenReturn(Optional.of(article));
+        when(articleSourceRepository.findTopByArticleOrderByFetchedAtDesc(article))
+                .thenReturn(Optional.of(ArticleSource.builder()
+                        .article(article)
+                        .sourceEndpoint(endpoint)
+                        .sourceItemId("item-1")
+                        .build()));
+
+        mockMvc.perform(get("/internal/articles/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.publisherName").value("Guardian"))
+                .andExpect(jsonPath("$.sourceEndpointName").value("Guardian RSS"))
+                .andExpect(jsonPath("$.canonicalUrl").value("https://example.com"));
     }
 
     @Test
     void getArticleContent_delegatesToService() throws Exception {
         ArticleContentResponse response = ArticleContentResponse.builder()
                 .articleId(1L)
-                .sourceId(10L)
-                .sourceName("Guardian")
-                .externalUrl("https://example.com")
+                .publisherId(10L)
+                .publisherName("Guardian")
+                .sourceEndpointId(20L)
+                .sourceEndpointName("Guardian RSS")
+                .canonicalUrl("https://example.com")
                 .title("Title")
                 .content("Some content")
                 .build();

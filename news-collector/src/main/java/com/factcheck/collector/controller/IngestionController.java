@@ -43,10 +43,10 @@ public class IngestionController {
                 ? correlationId
                 : UUID.randomUUID().toString();
 
-        log.info("Manual ingestion trigger for sourceId={}, correlationId={}", sourceId, cid);
+        log.info("Manual ingestion trigger for sourceEndpointId={}, correlationId={}", sourceId, cid);
         ingestionService.ingestSource(sourceId, cid);
 
-        return ResponseEntity.ok("Ingestion started for sourceId=" + sourceId + ", correlationId=" + cid);
+        return ResponseEntity.ok("Ingestion started for sourceEndpointId=" + sourceId + ", correlationId=" + cid);
     }
 
     @GetMapping("/logs")

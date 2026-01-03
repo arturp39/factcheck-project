@@ -1,8 +1,10 @@
 package com.factcheck.collector.service;
 
 import com.factcheck.collector.domain.entity.Article;
+import com.factcheck.collector.domain.entity.ArticleSource;
 import com.factcheck.collector.dto.ArticleContentResponse;
 import com.factcheck.collector.repository.ArticleRepository;
+import com.factcheck.collector.repository.ArticleSourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.List;
 public class ArticleContentService {
 
     private final ArticleRepository articleRepository;
+    private final ArticleSourceRepository articleSourceRepository;
     private final WeaviateIndexingService weaviateIndexingService;
 
     public ArticleContentResponse getArticleContent(Long articleId) {
@@ -31,11 +34,16 @@ public class ArticleContentService {
 
         String fullContent = String.join("\n\n", chunks);
 
+        ArticleSource latestSource = articleSourceRepository.findTopByArticleOrderByFetchedAtDesc(article)
+                .orElse(null);
+
         return ArticleContentResponse.builder()
                 .articleId(article.getId())
-                .sourceId(article.getSource().getId())
-                .sourceName(article.getSource().getName())
-                .externalUrl(article.getExternalUrl())
+                .publisherId(article.getPublisher().getId())
+                .publisherName(article.getPublisher().getName())
+                .sourceEndpointId(latestSource != null ? latestSource.getSourceEndpoint().getId() : null)
+                .sourceEndpointName(latestSource != null ? latestSource.getSourceEndpoint().getDisplayName() : null)
+                .canonicalUrl(article.getCanonicalUrl())
                 .title(article.getTitle())
                 .publishedDate(article.getPublishedDate())
                 .content(fullContent)

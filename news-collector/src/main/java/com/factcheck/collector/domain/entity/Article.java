@@ -20,11 +20,14 @@ public class Article {
     private Long id;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_id", nullable = false)
-    private Source source;
+    @JoinColumn(name = "publisher_id", nullable = false)
+    private Publisher publisher;
 
-    @Column(name = "external_url", nullable = false, unique = true, columnDefinition = "text")
-    private String externalUrl;
+    @Column(name = "canonical_url", nullable = false, columnDefinition = "text")
+    private String canonicalUrl;
+
+    @Column(name = "canonical_url_hash", nullable = false, length = 40)
+    private String canonicalUrlHash;
 
     @Column(nullable = false, columnDefinition = "text")
     private String title;
@@ -36,8 +39,12 @@ public class Article {
     private Instant publishedDate;
 
     @Builder.Default
-    @Column(name = "fetched_at", nullable = false)
-    private Instant fetchedAt = Instant.now();
+    @Column(name = "first_seen_at", nullable = false)
+    private Instant firstSeenAt = Instant.now();
+
+    @Builder.Default
+    @Column(name = "last_seen_at", nullable = false)
+    private Instant lastSeenAt = Instant.now();
 
     @Builder.Default
     @Column(name = "chunk_count", nullable = false)

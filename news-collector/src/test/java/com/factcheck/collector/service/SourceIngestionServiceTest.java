@@ -1,16 +1,18 @@
 package com.factcheck.collector.service;
 
 import com.factcheck.collector.domain.entity.IngestionLog;
-import com.factcheck.collector.domain.entity.Source;
+import com.factcheck.collector.domain.entity.Publisher;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.domain.enums.IngestionStatus;
-import com.factcheck.collector.domain.enums.SourceType;
+import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.exception.FetchException;
 import com.factcheck.collector.exception.ProcessingFailedException;
 import com.factcheck.collector.integration.fetcher.RawArticle;
 import com.factcheck.collector.integration.fetcher.SourceFetcher;
 import com.factcheck.collector.repository.ArticleRepository;
+import com.factcheck.collector.repository.ArticleSourceRepository;
 import com.factcheck.collector.repository.IngestionLogRepository;
-import com.factcheck.collector.repository.SourceRepository;
+import com.factcheck.collector.repository.SourceEndpointRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,10 +35,13 @@ import static org.mockito.Mockito.when;
 class SourceIngestionServiceTest {
 
     @Mock
-    private SourceRepository sourceRepository;
+    private SourceEndpointRepository sourceEndpointRepository;
 
     @Mock
     private ArticleRepository articleRepository;
+
+    @Mock
+    private ArticleSourceRepository articleSourceRepository;
 
     @Mock
     private IngestionLogRepository ingestionLogRepository;
@@ -53,25 +58,32 @@ class SourceIngestionServiceTest {
     @Mock
     private SourceFetcher fetcher;
 
-    private Source source;
+    private SourceEndpoint sourceEndpoint;
 
     @BeforeEach
     void initSource() {
-        source = Source.builder()
+        Publisher publisher = Publisher.builder()
+                .id(100L)
+                .name("Demo Publisher")
+                .build();
+
+        sourceEndpoint = SourceEndpoint.builder()
                 .id(7L)
-                .name("RSS Source")
-                .type(SourceType.RSS)
-                .url("https://example.com/rss")
+                .publisher(publisher)
+                .kind(SourceKind.RSS)
+                .displayName("RSS Source")
+                .rssUrl("https://example.com/rss")
                 .build();
     }
 
     @Test
     void ingestSingleSourceRecordsFetchFailure() throws FetchException {
-        when(fetcher.supports(SourceType.RSS)).thenReturn(true);
-        when(fetcher.fetch(source)).thenThrow(new FetchException("boom"));
+        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
+        when(fetcher.fetch(sourceEndpoint)).thenThrow(new FetchException("boom"));
 
         SourceIngestionService ingestionService = new SourceIngestionService(
-                sourceRepository,
+                articleSourceRepository,
+                sourceEndpointRepository,
                 articleRepository,
                 ingestionLogRepository,
                 List.of(fetcher),
@@ -80,7 +92,7 @@ class SourceIngestionServiceTest {
                 weaviateIndexingService
         );
 
-        ingestionService.ingestSingleSource(source, "corr-fail");
+        ingestionService.ingestSingleSource(sourceEndpoint, "corr-fail");
 
         ArgumentCaptor<IngestionLog> logCaptor = ArgumentCaptor.forClass(IngestionLog.class);
         verify(ingestionLogRepository, atLeastOnce()).save(logCaptor.capture());
@@ -95,21 +107,26 @@ class SourceIngestionServiceTest {
 
     @Test
     void ingestSingleSourceHandlesProcessingFailuresAndSuccesses() throws Exception {
-        when(fetcher.supports(SourceType.RSS)).thenReturn(true);
+        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
         RawArticle ok = RawArticle.builder()
+                .sourceItemId("ok-1")
                 .externalUrl("https://example.com/good")
                 .title("Good")
                 .rawText("Some text")
                 .build();
         RawArticle bad = RawArticle.builder()
+                .sourceItemId("bad-1")
                 .externalUrl("https://example.com/bad")
                 .title("Bad")
                 .rawText("More text")
                 .build();
-        when(fetcher.fetch(source)).thenReturn(List.of(ok, bad));
+        when(fetcher.fetch(sourceEndpoint)).thenReturn(List.of(ok, bad));
 
-        when(articleRepository.findByExternalUrl("https://example.com/good")).thenReturn(Optional.empty());
-        when(articleRepository.findByExternalUrl("https://example.com/bad")).thenReturn(Optional.empty());
+        when(articleSourceRepository.existsBySourceEndpointAndSourceItemId(sourceEndpoint, "ok-1")).thenReturn(false);
+        when(articleSourceRepository.existsBySourceEndpointAndSourceItemId(sourceEndpoint, "bad-1")).thenReturn(false);
+        when(articleRepository.findByPublisherAndCanonicalUrlHash(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.empty());
 
         // first article succeeds
         when(articleRepository.save(org.mockito.ArgumentMatchers.any()))
@@ -134,7 +151,8 @@ class SourceIngestionServiceTest {
                 .indexArticleChunks(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq("corr"));
 
         SourceIngestionService ingestionService = new SourceIngestionService(
-                sourceRepository,
+                articleSourceRepository,
+                sourceEndpointRepository,
                 articleRepository,
                 ingestionLogRepository,
                 List.of(fetcher),
@@ -143,7 +161,7 @@ class SourceIngestionServiceTest {
                 weaviateIndexingService
         );
 
-        ingestionService.ingestSingleSource(source, "corr");
+        ingestionService.ingestSingleSource(sourceEndpoint, "corr");
 
         ArgumentCaptor<IngestionLog> captor = ArgumentCaptor.forClass(IngestionLog.class);
         verify(ingestionLogRepository, atLeastOnce()).save(captor.capture());
@@ -156,16 +174,18 @@ class SourceIngestionServiceTest {
 
     @Test
     void ingestSingleSourceSkipsNonTextMediaPages() throws Exception {
-        when(fetcher.supports(SourceType.RSS)).thenReturn(true);
+        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
         RawArticle video = RawArticle.builder()
+                .sourceItemId("vid-1")
                 .externalUrl("https://example.com/video/abc")
                 .title("Video")
                 .rawText("")
                 .build();
-        when(fetcher.fetch(source)).thenReturn(List.of(video));
+        when(fetcher.fetch(sourceEndpoint)).thenReturn(List.of(video));
 
         SourceIngestionService ingestionService = new SourceIngestionService(
-                sourceRepository,
+                articleSourceRepository,
+                sourceEndpointRepository,
                 articleRepository,
                 ingestionLogRepository,
                 List.of(fetcher),
@@ -174,7 +194,7 @@ class SourceIngestionServiceTest {
                 weaviateIndexingService
         );
 
-        ingestionService.ingestSingleSource(source, "corr-skip");
+        ingestionService.ingestSingleSource(sourceEndpoint, "corr-skip");
 
         verify(articleRepository, never()).save(org.mockito.ArgumentMatchers.any());
         ArgumentCaptor<IngestionLog> captor = ArgumentCaptor.forClass(IngestionLog.class);

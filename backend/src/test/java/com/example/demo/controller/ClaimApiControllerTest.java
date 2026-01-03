@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.MDC;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +74,7 @@ class ClaimApiControllerTest {
         MDC.put("corrId", "cid-list");
 
         ClaimSummary c1 = new ClaimSummary(
-                1L, "c1", LocalDateTime.now(), "true", "e1"
+                1L, "c1", Instant.now(), "true", "e1"
         );
         ClaimsPageResponse respBody = new ClaimsPageResponse(
                 "cid-list", 0, 20, 1, 1, List.of(c1)

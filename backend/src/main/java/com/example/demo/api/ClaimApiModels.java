@@ -2,7 +2,7 @@ package com.example.demo.api;
 
 import com.example.demo.entity.Article;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public final class ClaimApiModels {
@@ -22,7 +22,7 @@ public final class ClaimApiModels {
     public record ClaimSummary(
             Long claimId,
             String claim,
-            LocalDateTime createdAt,
+            Instant createdAt,
             String verdict,
             String explanation
     ) {}
@@ -40,7 +40,7 @@ public final class ClaimApiModels {
             String correlationId,
             Long claimId,
             String claim,
-            LocalDateTime createdAt,
+            Instant createdAt,
             String verdict,
             String explanation,
             String biasAnalysis,

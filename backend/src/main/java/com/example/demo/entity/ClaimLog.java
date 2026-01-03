@@ -3,7 +3,7 @@ package com.example.demo.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "claim_log")
@@ -17,8 +17,8 @@ public class ClaimLog {
     @Column(name = "claim_text", columnDefinition = "TEXT", nullable = false)
     private String claimText;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt = Instant.now();
 
     @Column(name = "model_answer", columnDefinition = "TEXT")
     private String modelAnswer;

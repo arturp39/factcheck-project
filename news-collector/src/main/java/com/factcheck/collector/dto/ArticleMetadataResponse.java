@@ -13,9 +13,11 @@ import java.time.Instant;
 @AllArgsConstructor
 public class ArticleMetadataResponse {
     private Long id;
-    private Long sourceId;
-    private String sourceName;
-    private String externalUrl;
+    private Long publisherId;
+    private String publisherName;
+    private Long sourceEndpointId;
+    private String sourceEndpointName;
+    private String canonicalUrl;
     private String title;
     private Instant publishedDate;
     private int chunkCount;

@@ -1,7 +1,7 @@
 package com.factcheck.collector.integration.fetcher;
 
-import com.factcheck.collector.domain.entity.Source;
-import com.factcheck.collector.domain.enums.SourceType;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
+import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.exception.FetchException;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
@@ -36,12 +36,13 @@ public class RssFetcher implements SourceFetcher {
             .build();
 
     @Override
-    public List<RawArticle> fetch(Source source) throws FetchException {
-        log.info("Fetching RSS from source id={} url={}", source.getId(), source.getUrl());
+    public List<RawArticle> fetch(SourceEndpoint sourceEndpoint) throws FetchException {
+        String rssUrl = sourceEndpoint.getRssUrl();
+        log.info("Fetching RSS from endpoint id={} url={}", sourceEndpoint.getId(), rssUrl);
 
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(source.getUrl()))
+                    .uri(URI.create(rssUrl))
                     .GET()
                     .header("User-Agent", userAgent)
                     .build();
@@ -51,7 +52,7 @@ public class RssFetcher implements SourceFetcher {
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new FetchException(
-                        "RSS HTTP status " + response.statusCode() + " for " + source.getUrl(), null
+                        "RSS HTTP status " + response.statusCode() + " for " + rssUrl, null
                 );
             }
 
@@ -93,6 +94,7 @@ public class RssFetcher implements SourceFetcher {
                     }
 
                     result.add(RawArticle.builder()
+                            .sourceItemId(entry.getUri() != null ? entry.getUri() : link)
                             .externalUrl(link)
                             .title(title)
                             .description(description)
@@ -101,17 +103,17 @@ public class RssFetcher implements SourceFetcher {
                             .build());
                 }
 
-                log.info("Fetched {} RSS items from source id={}", result.size(), source.getId());
+                log.info("Fetched {} RSS items from endpoint id={}", result.size(), sourceEndpoint.getId());
                 return result;
             }
 
         } catch (Exception e) {
-            throw new FetchException("Failed to fetch RSS from " + source.getUrl(), e);
+            throw new FetchException("Failed to fetch RSS from " + rssUrl, e);
         }
     }
 
     @Override
-    public boolean supports(SourceType type) {
-        return type == SourceType.RSS;
+    public boolean supports(SourceKind kind) {
+        return kind == SourceKind.RSS;
     }
 }

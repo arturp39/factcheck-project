@@ -13,13 +13,13 @@ Key settings
 - Weaviate: `WEAVIATE_BASE_URL`, `WEAVIATE_API_KEY`, `WEAVIATE_PORT`, `WEAVIATE_DEFAULT_VECTORIZER=none`, `WEAVIATE_QUERY_DEFAULTS_LIMIT`.
 
 Profiles
-- Backend/collector default to `prod` profile; DB schema is applied by mounted SQL (`factcheck_db/init`).
+- Backend/collector default to `prod` profile; DB schema is applied by Flyway migrations in `classpath:db/migration`.
 
 Correlation IDs
 - Optional request header `X-Correlation-Id`. Services generate and echo when absent; logged consistently.
 
 Rate/size limits
 - Claim length: default 400 chars.
-- Pagination: size 1–200.
+- Pagination: size 1-200.
 - Collector search: embedding dimension must match `SEARCH_EMBEDDING_DIMENSION`.
 - NLP limits: configurable max texts per request, max text length, and total chars.

@@ -1,7 +1,7 @@
 package com.factcheck.collector.service;
 
 import com.factcheck.collector.domain.entity.IngestionLog;
-import com.factcheck.collector.domain.entity.Source;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.dto.IngestionLogPageResponse;
 import com.factcheck.collector.dto.IngestionRunResponse;
 import com.factcheck.collector.repository.IngestionLogRepository;
@@ -35,15 +35,19 @@ public class IngestionQueryService {
     }
 
     private IngestionRunResponse toResponse(IngestionLog log) {
-        Source source = log.getSource();
-        Long sourceId = source != null ? source.getId() : null;
-        String sourceName = source != null ? source.getName() : null;
+        SourceEndpoint endpoint = log.getSourceEndpoint();
+        Long sourceEndpointId = endpoint != null ? endpoint.getId() : null;
+        String sourceEndpointName = endpoint != null ? endpoint.getDisplayName() : null;
+        Long publisherId = endpoint != null ? endpoint.getPublisher().getId() : null;
+        String publisherName = endpoint != null ? endpoint.getPublisher().getName() : null;
         String status = log.getStatus() != null ? log.getStatus().name() : null;
 
         return new IngestionRunResponse(
                 log.getId(),
-                sourceId,
-                sourceName,
+                sourceEndpointId,
+                sourceEndpointName,
+                publisherId,
+                publisherName,
                 log.getStartedAt(),
                 log.getCompletedAt(),
                 log.getArticlesFetched(),

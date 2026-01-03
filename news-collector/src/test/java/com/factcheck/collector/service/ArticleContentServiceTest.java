@@ -1,9 +1,12 @@
 package com.factcheck.collector.service;
 
 import com.factcheck.collector.domain.entity.Article;
-import com.factcheck.collector.domain.entity.Source;
+import com.factcheck.collector.domain.entity.ArticleSource;
+import com.factcheck.collector.domain.entity.Publisher;
+import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.dto.ArticleContentResponse;
 import com.factcheck.collector.repository.ArticleRepository;
+import com.factcheck.collector.repository.ArticleSourceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +28,9 @@ class ArticleContentServiceTest {
     private ArticleRepository articleRepository;
 
     @Mock
+    private ArticleSourceRepository articleSourceRepository;
+
+    @Mock
     private WeaviateIndexingService weaviateIndexingService;
 
     @InjectMocks
@@ -32,28 +38,43 @@ class ArticleContentServiceTest {
 
     @Test
     void getArticleContentBuildsResponseFromChunks() {
-        Source source = Source.builder()
+        Publisher publisher = Publisher.builder()
                 .id(5L)
-                .name("Demo Source")
+                .name("Demo Publisher")
+                .build();
+
+        SourceEndpoint endpoint = SourceEndpoint.builder()
+                .id(12L)
+                .publisher(publisher)
+                .displayName("Demo RSS")
                 .build();
 
         Article article = Article.builder()
                 .id(10L)
-                .source(source)
-                .externalUrl("https://example.com/article")
+                .publisher(publisher)
+                .canonicalUrl("https://example.com/article")
+                .canonicalUrlHash("hash")
                 .title("An Article")
                 .publishedDate(Instant.parse("2024-01-02T03:04:05Z"))
                 .build();
 
         when(articleRepository.findById(10L)).thenReturn(Optional.of(article));
+        when(articleSourceRepository.findTopByArticleOrderByFetchedAtDesc(article))
+                .thenReturn(Optional.of(ArticleSource.builder()
+                        .article(article)
+                        .sourceEndpoint(endpoint)
+                        .sourceItemId("item-1")
+                        .build()));
         when(weaviateIndexingService.getChunksForArticle(10L)).thenReturn(List.of("First", "Second"));
 
         ArticleContentResponse response = articleContentService.getArticleContent(10L);
 
         assertThat(response.getArticleId()).isEqualTo(10L);
-        assertThat(response.getSourceId()).isEqualTo(5L);
-        assertThat(response.getSourceName()).isEqualTo("Demo Source");
-        assertThat(response.getExternalUrl()).isEqualTo("https://example.com/article");
+        assertThat(response.getPublisherId()).isEqualTo(5L);
+        assertThat(response.getPublisherName()).isEqualTo("Demo Publisher");
+        assertThat(response.getSourceEndpointId()).isEqualTo(12L);
+        assertThat(response.getSourceEndpointName()).isEqualTo("Demo RSS");
+        assertThat(response.getCanonicalUrl()).isEqualTo("https://example.com/article");
         assertThat(response.getTitle()).isEqualTo("An Article");
         assertThat(response.getPublishedDate()).isEqualTo(Instant.parse("2024-01-02T03:04:05Z"));
         assertThat(response.getContent()).isEqualTo("First\n\nSecond");
@@ -70,8 +91,14 @@ class ArticleContentServiceTest {
 
     @Test
     void getArticleContentThrowsWhenChunksMissing() {
-        Source source = Source.builder().id(3L).name("No Chunks Source").build();
-        Article article = Article.builder().id(7L).source(source).title("Title").externalUrl("url").build();
+        Publisher publisher = Publisher.builder().id(3L).name("No Chunks Publisher").build();
+        Article article = Article.builder()
+                .id(7L)
+                .publisher(publisher)
+                .title("Title")
+                .canonicalUrl("url")
+                .canonicalUrlHash("hash")
+                .build();
 
         when(articleRepository.findById(7L)).thenReturn(Optional.of(article));
         when(weaviateIndexingService.getChunksForArticle(7L)).thenReturn(List.of());

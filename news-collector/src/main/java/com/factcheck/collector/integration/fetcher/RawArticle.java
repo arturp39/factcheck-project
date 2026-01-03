@@ -8,6 +8,7 @@ import java.time.Instant;
 @Value
 @Builder
 public class RawArticle {
+    String sourceItemId;
     String externalUrl;
     String title;
     String description;

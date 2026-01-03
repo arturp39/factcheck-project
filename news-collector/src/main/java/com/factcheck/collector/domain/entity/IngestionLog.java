@@ -20,8 +20,8 @@ public class IngestionLog {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_id")
-    private Source source;
+    @JoinColumn(name = "source_endpoint_id")
+    private SourceEndpoint sourceEndpoint;
 
     @Builder.Default
     @Column(name = "started_at", nullable = false)

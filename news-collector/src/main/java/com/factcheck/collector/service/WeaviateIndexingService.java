@@ -144,9 +144,9 @@ public class WeaviateIndexingService {
                         """.formatted(
                         mapper.writeValueAsString(chunks.get(i)),
                         article.getId(),
-                        mapper.writeValueAsString(article.getExternalUrl()),
+                        mapper.writeValueAsString(article.getCanonicalUrl()),
                         mapper.writeValueAsString(article.getTitle()),
-                        mapper.writeValueAsString(article.getSource().getName()),
+                        mapper.writeValueAsString(article.getPublisher().getName()),
                         mapper.writeValueAsString(article.getPublishedDate() != null
                                 ? article.getPublishedDate().toString()
                                 : Instant.now().toString()),
