@@ -1,8 +1,9 @@
 package com.factcheck.collector.domain.enums;
 
 public enum IngestionStatus {
-    RUNNING,
+    STARTED,
     SUCCESS,
     PARTIAL,
-    FAILED
+    FAILED,
+    SKIPPED
 }

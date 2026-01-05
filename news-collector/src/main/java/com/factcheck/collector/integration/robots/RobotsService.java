@@ -13,6 +13,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,18 +23,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RobotsService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration CACHE_TTL = Duration.ofHours(12);
 
     private static final BaseRobotRules ALLOW_ALL_RULES =
             new SimpleRobotRules(SimpleRobotRules.RobotRulesMode.ALLOW_ALL);
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NORMAL)
             .version(HttpClient.Version.HTTP_1_1)
             .build();
 
     private final SimpleRobotRulesParser parser = new SimpleRobotRulesParser();
 
-    private final Map<String, BaseRobotRules> rulesCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedRules> rulesCache = new ConcurrentHashMap<>();
 
     private final String userAgent;
 
@@ -53,12 +57,19 @@ public class RobotsService {
                 return true;
             }
 
-            String key = scheme + "://" + host;
+            host = host.toLowerCase(Locale.ROOT);
+            String schemeLower = scheme.toLowerCase(Locale.ROOT);
+            int port = uri.getPort();
+            String key = buildKey(schemeLower, host, port);
 
-            // Cache robots.txt per host to avoid hammering sites
-            BaseRobotRules rules = rulesCache.computeIfAbsent(key, this::fetchRulesForHost);
+            CachedRules cached = rulesCache.get(key);
+            if (cached == null || cached.isExpired()) {
+                BaseRobotRules rules = fetchRulesForHost(schemeLower, host, port);
+                cached = new CachedRules(rules, Instant.now());
+                rulesCache.put(key, cached);
+            }
 
-            return rules.isAllowed(url);
+            return cached.rules.isAllowed(url);
 
         } catch (Exception e) {
             log.warn("Failed to evaluate robots.txt for url={}. Defaulting to ALLOW. Reason: {}",
@@ -67,7 +78,16 @@ public class RobotsService {
         }
     }
 
-    private BaseRobotRules fetchRulesForHost(String baseUrl) {
+    private String buildKey(String scheme, String host, int port) {
+        int effectivePort = port;
+        if (effectivePort == -1) {
+            effectivePort = scheme.equals("https") ? 443 : 80;
+        }
+        return scheme + "://" + host + ":" + effectivePort;
+    }
+
+    private BaseRobotRules fetchRulesForHost(String scheme, String host, int port) {
+        String baseUrl = scheme + "://" + host + (port == -1 ? "" : ":" + port);
         String robotsUrl = baseUrl + "/robots.txt";
         log.info("Fetching robots.txt from {}", robotsUrl);
 
@@ -85,10 +105,13 @@ public class RobotsService {
             int status = response.statusCode();
             if (status >= 200 && status < 300) {
                 byte[] body = response.body();
+                String contentType = response.headers()
+                        .firstValue("Content-Type")
+                        .orElse("text/plain");
                 return parser.parseContent(
                         robotsUrl,
                         body,
-                        "text/plain",
+                        contentType,
                         userAgent
                 );
             } else if (status == 404) {
@@ -100,10 +123,29 @@ public class RobotsService {
                 return ALLOW_ALL_RULES;
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted fetching robots.txt from {}. Defaulting to ALLOW. Reason: {}",
+                    robotsUrl, e.toString());
+            return ALLOW_ALL_RULES;
+        } catch (IOException e) {
             log.warn("Error fetching robots.txt from {}. Defaulting to ALLOW. Reason: {}",
                     robotsUrl, e.toString());
             return ALLOW_ALL_RULES;
+        }
+    }
+
+    private static final class CachedRules {
+        private final BaseRobotRules rules;
+        private final Instant fetchedAt;
+
+        private CachedRules(BaseRobotRules rules, Instant fetchedAt) {
+            this.rules = rules;
+            this.fetchedAt = fetchedAt;
+        }
+
+        private boolean isExpired() {
+            return fetchedAt.plus(CACHE_TTL).isBefore(Instant.now());
         }
     }
 }

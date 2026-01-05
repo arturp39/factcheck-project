@@ -1,6 +1,7 @@
 package com.factcheck.collector.controller;
 
 import com.factcheck.collector.dto.IngestionLogPageResponse;
+import com.factcheck.collector.dto.IngestionRunDetailResponse;
 import com.factcheck.collector.dto.IngestionRunResponse;
 import com.factcheck.collector.service.IngestionQueryService;
 import com.factcheck.collector.service.IngestionService;
@@ -18,9 +19,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(IngestionController.class)
 class IngestionControllerTest {
@@ -36,7 +39,7 @@ class IngestionControllerTest {
 
     @Test
     void runIngestion_usesProvidedCorrelationId() throws Exception {
-        String correlationId = "test-cid-123";
+        String correlationId = UUID.randomUUID().toString();
 
         mockMvc.perform(post("/admin/ingestion/run")
                         .param("correlationId", correlationId))
@@ -67,12 +70,13 @@ class IngestionControllerTest {
 
     @Test
     void runIngestionForSource_callsService() throws Exception {
+        String correlationId = UUID.randomUUID().toString();
         mockMvc.perform(post("/admin/ingestion/run/{sourceId}", 10L)
-                        .param("correlationId", "cid-1"))
+                        .param("correlationId", correlationId))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Ingestion started for sourceEndpointId=10, correlationId=cid-1"));
+                .andExpect(content().string("Ingestion started for sourceEndpointId=10, correlationId=" + correlationId));
 
-        verify(ingestionService).ingestSource(10L, "cid-1");
+        verify(ingestionService).ingestSource(10L, correlationId);
     }
 
     @Test
@@ -101,12 +105,11 @@ class IngestionControllerTest {
 
     @Test
     void getRun_returnsRun() throws Exception {
-        IngestionRunResponse run = new IngestionRunResponse(
-                7L, 2L, "NPR Feed", 20L, "NPR",
-                null, null,
-                0, 0, 0,
+        IngestionRunDetailResponse run = new IngestionRunDetailResponse(
+                7L,
+                Instant.parse("2025-01-01T00:00:00Z"),
+                Instant.parse("2025-01-01T01:00:00Z"),
                 "PARTIAL",
-                null,
                 "cid-y"
         );
 
@@ -115,7 +118,6 @@ class IngestionControllerTest {
         mockMvc.perform(get("/admin/ingestion/runs/{id}", 7L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7L))
-                .andExpect(jsonPath("$.sourceEndpointId").value(2L))
                 .andExpect(jsonPath("$.status").value("PARTIAL"));
     }
 }

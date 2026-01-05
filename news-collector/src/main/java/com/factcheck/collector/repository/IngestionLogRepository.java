@@ -4,8 +4,9 @@ import com.factcheck.collector.domain.entity.IngestionLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IngestionLogRepository extends JpaRepository<IngestionLog, Long> {
 
-    Optional<IngestionLog> findByCorrelationId(String correlationId);
+    Optional<IngestionLog> findByCorrelationId(UUID correlationId);
 }

@@ -18,6 +18,10 @@ public record SourceResponse(
         Instant lastFetchedAt,
         Instant lastSuccessAt,
         int failureCount,
+        boolean robotsDisallowed,
+        Instant blockedUntil,
+        String blockReason,
+        int blockCount,
         Instant createdAt,
         Instant updatedAt
 ) {

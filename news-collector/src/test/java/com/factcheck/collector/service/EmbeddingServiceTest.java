@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,7 +36,7 @@ class EmbeddingServiceTest {
                 List.of(0.3d, 0.4d)
         ));
 
-        when(nlpServiceClient.embed(org.mockito.ArgumentMatchers.any(EmbedRequest.class)))
+        when(nlpServiceClient.embed(any(EmbedRequest.class)))
                 .thenReturn(embedResponse);
 
         List<List<Double>> embeddings = embeddingService.embedChunks(chunks, "corr-123");

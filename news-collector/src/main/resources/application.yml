@@ -46,9 +46,19 @@ nlp-service:
 ingestion:
   max-parallel-sources: ${INGESTION_MAX_PARALLEL_SOURCES:1}
   interval-ms: ${INGESTION_INTERVAL_MS:600000}
+  block-threshold: ${INGESTION_BLOCK_THRESHOLD:2}
+  block-duration: ${INGESTION_BLOCK_DURATION:PT24H}
 
 crawler:
   user-agent: ${CRAWLER_USER_AGENT:FactCheckCollector/1.0 (+https://example.com)}
 
 search:
   embedding-dimension: ${SEARCH_EMBEDDING_DIMENSION:768}
+
+newsapi:
+  api-key: ${NEWSAPI_API_KEY:}
+  base-url: ${NEWSAPI_BASE_URL:https://newsapi.org/v2}
+  max-sources-per-request: ${NEWSAPI_MAX_SOURCES_PER_REQUEST:20}
+  max-pages-per-batch: ${NEWSAPI_MAX_PAGES_PER_BATCH:5}
+  max-requests-per-ingestion: ${NEWSAPI_MAX_REQUESTS_PER_INGESTION:100}
+  sort-by: ${NEWSAPI_SORT_BY:publishedAt}

@@ -5,13 +5,13 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class GenericJsoupContentExtractorTest {
@@ -31,48 +31,66 @@ class GenericJsoupContentExtractorTest {
     }
 
     @Test
-    void extractMainText_skipsBoilerplateAndDuplicates() throws Exception {
+    void fetchAndExtract_skipsBoilerplateAndDuplicates() throws Exception {
+        String filler = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(30).trim();
+        String p1 = "Main paragraph one. " + filler;
+        String p2 = "Main paragraph two. " + filler;
+        String p3 = "Main paragraph three. " + filler;
+        String p4 = "Main paragraph four. " + filler;
+        String p5 = "Main paragraph five. " + filler;
+        String p6 = "Main paragraph six. " + filler;
+
         String html = """
                 <html>
                   <body>
                     <nav>Subscribe now</nav>
                     <article>
-                      <p>Main paragraph one.</p>
+                      <p>%s</p>
                       <p class="promo">Promo text</p>
-                      <p>Main paragraph one.</p>
-                      <p>Main paragraph two.</p>
+                      <p>%s</p>
+                      <p>%s</p>
+                      <p>%s</p>
+                      <p>%s</p>
+                      <p>%s</p>
+                      <p>%s</p>
                     </article>
                   </body>
                 </html>
-                """;
+                """.formatted(p1, p1, p2, p3, p4, p5, p6);
         server.createContext("/page", exchange -> {
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.close();
         });
         server.start();
 
-        RobotsService robotsService = Mockito.mock(RobotsService.class);
+        RobotsService robotsService = mock(RobotsService.class);
         when(robotsService.isAllowed(baseUrl + "/page")).thenReturn(true);
 
         GenericJsoupContentExtractor extractor = new GenericJsoupContentExtractor(robotsService);
         ReflectionTestUtils.setField(extractor, "userAgent", "TestAgent/1.0");
 
-        String text = extractor.extractMainText(baseUrl + "/page");
+        ArticleFetchResult result = extractor.fetchAndExtract(baseUrl + "/page");
 
-        assertThat(text).contains("Main paragraph one.\n\nMain paragraph two.");
-        assertThat(text).doesNotContain("Promo");
+        assertThat(result.getHttpStatus()).isEqualTo(200);
+        assertThat(result.getExtractedText()).contains(p1);
+        assertThat(result.getExtractedText()).contains(p5);
+        assertThat(result.getExtractedText()).doesNotContain("Promo");
+        assertThat(result.getExtractedText().indexOf(p1))
+                .isEqualTo(result.getExtractedText().lastIndexOf(p1));
     }
 
     @Test
-    void extractMainText_returnsEmptyWhenDisallowedByRobots() {
-        RobotsService robotsService = Mockito.mock(RobotsService.class);
+    void fetchAndExtract_returnsErrorWhenDisallowedByRobots() {
+        RobotsService robotsService = mock(RobotsService.class);
         when(robotsService.isAllowed(baseUrl + "/page")).thenReturn(false);
 
         GenericJsoupContentExtractor extractor = new GenericJsoupContentExtractor(robotsService);
-        String text = extractor.extractMainText(baseUrl + "/page");
+        ArticleFetchResult result = extractor.fetchAndExtract(baseUrl + "/page");
 
-        assertThat(text).isEmpty();
+        assertThat(result.getFetchError()).contains("Robots.txt");
+        assertThat(result.getExtractedText()).isNull();
     }
 }

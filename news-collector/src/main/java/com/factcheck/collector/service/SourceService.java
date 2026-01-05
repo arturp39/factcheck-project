@@ -171,6 +171,10 @@ public class SourceService {
                 s.getLastFetchedAt(),
                 s.getLastSuccessAt(),
                 s.getFailureCount(),
+                s.isRobotsDisallowed(),
+                s.getBlockedUntil(),
+                s.getBlockReason(),
+                s.getBlockCount(),
                 s.getCreatedAt(),
                 s.getUpdatedAt()
         );

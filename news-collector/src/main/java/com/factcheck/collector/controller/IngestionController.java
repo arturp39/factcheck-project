@@ -1,7 +1,7 @@
 package com.factcheck.collector.controller;
 
 import com.factcheck.collector.dto.IngestionLogPageResponse;
-import com.factcheck.collector.dto.IngestionRunResponse;
+import com.factcheck.collector.dto.IngestionRunDetailResponse;
 import com.factcheck.collector.service.IngestionQueryService;
 import com.factcheck.collector.service.IngestionService;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +24,7 @@ public class IngestionController {
     public ResponseEntity<String> runIngestion(
             @RequestParam(required = false) String correlationId
     ) {
-        String cid = (correlationId != null && !correlationId.isBlank())
-                ? correlationId
-                : UUID.randomUUID().toString();
+        String cid = normalizeCorrelationId(correlationId);
 
         log.info("Manual ingestion trigger, correlationId={}", cid);
         ingestionService.ingestAllSources(cid);
@@ -39,9 +37,7 @@ public class IngestionController {
             @PathVariable("sourceId") Long sourceId,
             @RequestParam(required = false) String correlationId
     ) {
-        String cid = (correlationId != null && !correlationId.isBlank())
-                ? correlationId
-                : UUID.randomUUID().toString();
+        String cid = normalizeCorrelationId(correlationId);
 
         log.info("Manual ingestion trigger for sourceEndpointId={}, correlationId={}", sourceId, cid);
         ingestionService.ingestSource(sourceId, cid);
@@ -65,7 +61,18 @@ public class IngestionController {
     }
 
     @GetMapping("/runs/{id}")
-    public ResponseEntity<IngestionRunResponse> getRun(@PathVariable("id") Long runId) {
+    public ResponseEntity<IngestionRunDetailResponse> getRun(@PathVariable("id") Long runId) {
         return ResponseEntity.ok(ingestionQueryService.getRun(runId));
+    }
+
+    private String normalizeCorrelationId(String correlationId) {
+        if (correlationId == null || correlationId.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        try {
+            return UUID.fromString(correlationId).toString();
+        } catch (IllegalArgumentException ex) {
+            return UUID.randomUUID().toString();
+        }
     }
 }

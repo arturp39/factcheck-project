@@ -1,54 +1,64 @@
 package com.factcheck.collector.service;
 
-import com.factcheck.collector.domain.entity.Article;
-import com.factcheck.collector.domain.entity.ArticleSource;
 import com.factcheck.collector.domain.entity.IngestionLog;
-import com.factcheck.collector.domain.entity.Publisher;
+import com.factcheck.collector.domain.entity.IngestionRun;
 import com.factcheck.collector.domain.entity.SourceEndpoint;
-import com.factcheck.collector.domain.enums.ArticleStatus;
 import com.factcheck.collector.domain.enums.IngestionStatus;
 import com.factcheck.collector.exception.FetchException;
-import com.factcheck.collector.exception.ProcessingFailedException;
+import com.factcheck.collector.integration.fetcher.ArticleFetchResult;
+import com.factcheck.collector.integration.fetcher.BatchResettableFetcher;
 import com.factcheck.collector.integration.fetcher.RawArticle;
 import com.factcheck.collector.integration.fetcher.SourceFetcher;
-import com.factcheck.collector.repository.ArticleRepository;
-import com.factcheck.collector.repository.ArticleSourceRepository;
+import com.factcheck.collector.integration.robots.RobotsService;
 import com.factcheck.collector.repository.IngestionLogRepository;
 import com.factcheck.collector.repository.SourceEndpointRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SourceIngestionService {
 
-    private final ArticleSourceRepository articleSourceRepository;
+    private static final String BLOCK_REASON_ROBOTS = "ROBOTS_DISALLOWED";
+    private static final String BLOCK_REASON_BLOCKED = "BLOCKED_OR_CAPTCHA";
+    private static final String BLOCK_REASON_EXTRACTION = "EXTRACTION_FAILED";
+
     private final SourceEndpointRepository sourceEndpointRepository;
-    private final ArticleRepository articleRepository;
     private final IngestionLogRepository ingestionLogRepository;
     private final List<SourceFetcher> fetchers;
-    private final ArticleProcessingService articleProcessingService;
-    private final EmbeddingService embeddingService;
-    private final WeaviateIndexingService weaviateIndexingService;
+    private final ArticleDiscoveryService articleDiscoveryService;
+    private final ArticleEnrichmentService articleEnrichmentService;
+    private final ArticleIndexingService articleIndexingService;
+    private final RobotsService robotsService;
 
-    public void ingestSingleSource(SourceEndpoint sourceEndpoint, String correlationId) {
+    @Value("${ingestion.block-threshold:2}")
+    private int blockThreshold;
+
+    @Value("${ingestion.block-duration:PT24H}")
+    private Duration blockDuration;
+
+    public IngestionStatus ingestSingleSource(SourceEndpoint sourceEndpoint, UUID correlationId, IngestionRun run) {
+        String correlationIdStr = correlationId.toString();
 
         log.info("Ingesting endpoint id={} name={} publisher={} correlationId={}",
                 sourceEndpoint.getId(),
                 sourceEndpoint.getDisplayName(),
                 sourceEndpoint.getPublisher().getName(),
-                correlationId);
+                correlationIdStr);
 
         IngestionLog logEntry = IngestionLog.builder()
                 .sourceEndpoint(sourceEndpoint)
-                .status(IngestionStatus.RUNNING)
+                .run(run)
+                .status(IngestionStatus.STARTED)
                 .correlationId(correlationId)
                 .startedAt(Instant.now())
                 .build();
@@ -59,104 +69,80 @@ public class SourceIngestionService {
         int failed = 0;
 
         try {
-            // Choose fetcher implementation per source type (RSS, sitemap, robots, etc.)
+            if (sourceEndpoint.isRobotsDisallowed()) {
+                return skipSource(logEntry, sourceEndpoint, "Robots.txt disallows scraping for this source");
+            }
+            if (isBlocked(sourceEndpoint)) {
+                return skipSource(logEntry, sourceEndpoint,
+                        "Source blocked until " + sourceEndpoint.getBlockedUntil());
+            }
+
             SourceFetcher fetcher = fetchers.stream()
-                    .filter(f -> f.supports(sourceEndpoint.getKind()))
+                    .filter(f -> f.supports(sourceEndpoint))
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("No fetcher for type " + sourceEndpoint.getKind()));
 
             List<RawArticle> rawArticles = fetcher.fetch(sourceEndpoint);
             fetched = rawArticles.size();
 
+            String sampleUrl = rawArticles.stream()
+                    .map(RawArticle::getExternalUrl)
+                    .filter(u -> u != null && !u.isBlank())
+                    .findFirst()
+                    .orElse(null);
+            if (sampleUrl != null && !robotsService.isAllowed(sampleUrl)) {
+                markRobotsDisallowed(sourceEndpoint);
+                sourceEndpoint.setLastFetchedAt(Instant.now());
+                sourceEndpointRepository.save(sourceEndpoint);
+                return skipSource(logEntry, sourceEndpoint, "Robots.txt disallows scraping for " + sampleUrl);
+            }
+
+            boolean blockSignalDetected = false;
+            String blockReason = null;
+            boolean hadSuccess = false;
+
             for (RawArticle raw : rawArticles) {
                 final String url = raw.getExternalUrl();
-
                 try {
-                    // Skip pages that are likely videos/galleries because downstream expects text
-                    if (isNonTextMediaPage(url)) {
-                        log.info("Skipping non-text media page: {}", url);
+                    if (articleDiscoveryService.shouldSkip(raw)) {
                         continue;
                     }
 
-                    String fullText = raw.getRawText();
-                    if (fullText == null || fullText.isBlank()) {
-                        log.info("Skipping article with no extracted text: {}", url);
+                    ArticleDiscoveryService.DiscoveryResult discovery =
+                            articleDiscoveryService.discover(sourceEndpoint, raw);
+                    if (discovery == null) {
                         continue;
                     }
 
-                    String sourceItemId = raw.getSourceItemId();
-                    if (sourceItemId == null || sourceItemId.isBlank()) {
-                        sourceItemId = url;
-                    }
-                    if (sourceItemId == null || sourceItemId.isBlank()) {
-                        log.info("Skipping article with no source item id: {}", url);
+                    if (!discovery.isNew()) {
                         continue;
                     }
 
-                    if (articleSourceRepository.existsBySourceEndpointAndSourceItemId(sourceEndpoint, sourceItemId)) {
-                        log.debug("Article source already exists, skipping sourceItemId={}", sourceItemId);
-                        continue;
-                    }
-
-                    String canonicalUrl = url;
-                    if (canonicalUrl == null || canonicalUrl.isBlank()) {
-                        log.info("Skipping article with no canonical url: {}", url);
-                        continue;
-                    }
-                    String canonicalHash = sha1Hex(canonicalUrl);
-
-                    Publisher publisher = sourceEndpoint.getPublisher();
-                    Article article = articleRepository.findByPublisherAndCanonicalUrlHash(publisher, canonicalHash)
-                            .orElse(null);
-
-                    boolean isNew = false;
-                    if (article == null) {
-                        article = Article.builder()
-                                .publisher(publisher)
-                                .canonicalUrl(canonicalUrl)
-                                .canonicalUrlHash(canonicalHash)
-                                .title(raw.getTitle())
-                                .description(raw.getDescription())
-                                .publishedDate(raw.getPublishedDate())
-                                .status(ArticleStatus.PENDING)
-                                .build();
-
-                        try {
-                            article = articleRepository.save(article);
-                            isNew = true;
-                        } catch (DataIntegrityViolationException ex) {
-                            log.info("Duplicate article detected at DB level, skipping url={}", url);
-                            continue;
+                    ArticleEnrichmentService.EnrichmentResult enrichment =
+                            articleEnrichmentService.enrich(discovery.article(), raw);
+                    if (!enrichment.success()) {
+                        failed++;
+                        String reason = classifyBlockReason(enrichment.fetchResult());
+                        if (reason != null) {
+                            blockSignalDetected = true;
+                            blockReason = reason;
+                            if (BLOCK_REASON_ROBOTS.equals(reason)) {
+                                markRobotsDisallowed(sourceEndpoint);
+                                break;
+                            }
+                            if (BLOCK_REASON_BLOCKED.equals(reason)) {
+                                break;
+                            }
                         }
-                    } else {
-                        article.setLastSeenAt(Instant.now());
-                        articleRepository.save(article);
-                    }
-
-                    ArticleSource link = ArticleSource.builder()
-                            .article(article)
-                            .sourceEndpoint(sourceEndpoint)
-                            .sourceItemId(sourceItemId)
-                            .build();
-
-                    try {
-                        articleSourceRepository.save(link);
-                    } catch (DataIntegrityViolationException ex) {
-                        log.debug("Duplicate article source link, skipping sourceItemId={}", sourceItemId);
-                    }
-
-                    if (!isNew) {
                         continue;
                     }
 
-                    // chunk -> embed -> push to Weaviate
-                    processAndIndexArticle(article, fullText, correlationId);
-                    processed++;
-
-                } catch (ProcessingFailedException e) {
-                    failed++;
-                    log.warn("Processing failed for article url={}", url, e);
-
+                    hadSuccess = true;
+                    if (articleIndexingService.index(discovery.article(), enrichment.extractedText(), correlationIdStr)) {
+                        processed++;
+                    } else {
+                        failed++;
+                    }
                 } catch (Exception e) {
                     failed++;
                     log.error("Unexpected error processing article url={}", url, e);
@@ -172,6 +158,15 @@ public class SourceIngestionService {
             logEntry.setArticlesProcessed(processed);
             logEntry.setArticlesFailed(failed);
             logEntry.setCompletedAt(Instant.now());
+
+            if (blockSignalDetected && !BLOCK_REASON_ROBOTS.equals(blockReason)) {
+                if (BLOCK_REASON_BLOCKED.equals(blockReason)
+                        || (!hadSuccess && BLOCK_REASON_EXTRACTION.equals(blockReason))) {
+                    applyBlockSignal(sourceEndpoint, blockReason);
+                }
+            } else if (hadSuccess) {
+                clearBlockState(sourceEndpoint);
+            }
 
             if (failed == 0) {
                 sourceEndpoint.setLastSuccessAt(Instant.now());
@@ -191,57 +186,67 @@ public class SourceIngestionService {
         }
 
         ingestionLogRepository.save(logEntry);
+        return logEntry.getStatus();
     }
 
-    private void processAndIndexArticle(Article article, String fullText, String correlationId) {
-        article.setStatus(ArticleStatus.PROCESSING);
-        articleRepository.save(article);
-
-        try {
-            var chunks = articleProcessingService.createChunks(article, fullText, correlationId);
-            var embeddings = embeddingService.embedChunks(chunks, correlationId);
-            weaviateIndexingService.indexArticleChunks(article, chunks, embeddings, correlationId);
-
-            article.setChunkCount(chunks.size());
-            article.setWeaviateIndexed(true);
-            article.setStatus(ArticleStatus.PROCESSED);
-            articleRepository.save(article);
-
-        } catch (Exception e) {
-            log.error("Processing/indexing failed for article id={}", article.getId(), e);
-            article.setStatus(ArticleStatus.FAILED);
-            article.setErrorMessage(e.getMessage());
-            articleRepository.save(article);
-            throw new ProcessingFailedException(e);
+    public void resetBatchCaches() {
+        for (SourceFetcher fetcher : fetchers) {
+            if (fetcher instanceof BatchResettableFetcher resettableFetcher) {
+                resettableFetcher.resetBatch();
+            }
         }
     }
 
-    private boolean isNonTextMediaPage(String url) {
-        if (url == null) {
-            return false;
-        }
-        String u = url.toLowerCase();
-
-        return u.contains("/video/")
-                || u.contains("/videos/")
-                || u.contains("/newsfeed/")
-                || u.contains("/latest-news-bulletin")
-                || u.contains("/picture/")
-                || u.contains("/cartoon/")
-                || u.contains("/gallery/")
-                || u.contains("/slideshow/")
-                || u.contains("/watch/")
-                || u.contains("/live/")
-                || u.contains("/iplayer/");
+    private boolean isBlocked(SourceEndpoint sourceEndpoint) {
+        Instant blockedUntil = sourceEndpoint.getBlockedUntil();
+        return blockedUntil != null && blockedUntil.isAfter(Instant.now());
     }
 
-    private String sha1Hex(String value) {
-        try {
-            var digest = java.security.MessageDigest.getInstance("SHA-1");
-            byte[] hash = digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to compute canonical url hash", e);
+    private IngestionStatus skipSource(IngestionLog logEntry, SourceEndpoint sourceEndpoint, String reason) {
+        logEntry.setStatus(IngestionStatus.SKIPPED);
+        logEntry.setErrorDetails(reason);
+        logEntry.setCompletedAt(Instant.now());
+        ingestionLogRepository.save(logEntry);
+        return logEntry.getStatus();
+    }
+
+    private void markRobotsDisallowed(SourceEndpoint sourceEndpoint) {
+        sourceEndpoint.setRobotsDisallowed(true);
+        sourceEndpoint.setBlockedUntil(null);
+        sourceEndpoint.setBlockReason(BLOCK_REASON_ROBOTS);
+        sourceEndpoint.setBlockCount(0);
+    }
+
+    private String classifyBlockReason(ArticleFetchResult fetchResult) {
+        if (fetchResult == null) {
+            return null;
         }
+        if (Boolean.TRUE.equals(fetchResult.getBlockedSuspected())) {
+            return BLOCK_REASON_BLOCKED;
+        }
+        String fetchError = fetchResult.getFetchError();
+        if (fetchError != null && fetchError.toLowerCase(Locale.ROOT).contains("robots.txt")) {
+            return BLOCK_REASON_ROBOTS;
+        }
+        String extractionError = fetchResult.getExtractionError();
+        if (extractionError != null && extractionError.toLowerCase(Locale.ROOT).contains("low-quality extraction")) {
+            return BLOCK_REASON_EXTRACTION;
+        }
+        return null;
+    }
+
+    private void applyBlockSignal(SourceEndpoint sourceEndpoint, String reason) {
+        int nextCount = sourceEndpoint.getBlockCount() + 1;
+        sourceEndpoint.setBlockCount(nextCount);
+        sourceEndpoint.setBlockReason(reason);
+        if (nextCount >= blockThreshold) {
+            sourceEndpoint.setBlockedUntil(Instant.now().plus(blockDuration));
+        }
+    }
+
+    private void clearBlockState(SourceEndpoint sourceEndpoint) {
+        sourceEndpoint.setBlockCount(0);
+        sourceEndpoint.setBlockReason(null);
+        sourceEndpoint.setBlockedUntil(null);
     }
 }

@@ -40,6 +40,10 @@ public class Publisher {
     @Column(name = "mbfc_url", columnDefinition = "text")
     private String mbfcUrl;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mbfc_source_id")
+    private MbfcSource mbfcSource;
+
     @Builder.Default
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
@@ -47,9 +51,4 @@ public class Publisher {
     @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
-
-    @PreUpdate
-    void preUpdate() {
-        this.updatedAt = Instant.now();
-    }
 }

@@ -1,5 +1,6 @@
 package com.factcheck.collector.controller;
 
+import com.factcheck.collector.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;

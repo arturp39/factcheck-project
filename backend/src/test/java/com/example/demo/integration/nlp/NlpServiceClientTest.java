@@ -1,5 +1,6 @@
 package com.example.demo.integration.nlp;
 
+import com.example.demo.integration.nlp.dto.EmbedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

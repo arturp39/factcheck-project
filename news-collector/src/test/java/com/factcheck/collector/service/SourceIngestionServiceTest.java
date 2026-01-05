@@ -6,11 +6,9 @@ import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.domain.enums.IngestionStatus;
 import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.exception.FetchException;
-import com.factcheck.collector.exception.ProcessingFailedException;
 import com.factcheck.collector.integration.fetcher.RawArticle;
 import com.factcheck.collector.integration.fetcher.SourceFetcher;
-import com.factcheck.collector.repository.ArticleRepository;
-import com.factcheck.collector.repository.ArticleSourceRepository;
+import com.factcheck.collector.integration.robots.RobotsService;
 import com.factcheck.collector.repository.IngestionLogRepository;
 import com.factcheck.collector.repository.SourceEndpointRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,11 +19,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,25 +35,22 @@ class SourceIngestionServiceTest {
     private SourceEndpointRepository sourceEndpointRepository;
 
     @Mock
-    private ArticleRepository articleRepository;
-
-    @Mock
-    private ArticleSourceRepository articleSourceRepository;
-
-    @Mock
     private IngestionLogRepository ingestionLogRepository;
 
     @Mock
-    private ArticleProcessingService articleProcessingService;
-
-    @Mock
-    private EmbeddingService embeddingService;
-
-    @Mock
-    private WeaviateIndexingService weaviateIndexingService;
-
-    @Mock
     private SourceFetcher fetcher;
+
+    @Mock
+    private ArticleDiscoveryService articleDiscoveryService;
+
+    @Mock
+    private ArticleEnrichmentService articleEnrichmentService;
+
+    @Mock
+    private ArticleIndexingService articleIndexingService;
+
+    @Mock
+    private RobotsService robotsService;
 
     private SourceEndpoint sourceEndpoint;
 
@@ -77,22 +71,22 @@ class SourceIngestionServiceTest {
     }
 
     @Test
-    void ingestSingleSourceRecordsFetchFailure() throws FetchException {
-        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
+    void ingestSingleSourceRecordsFetchFailure() {
+        when(fetcher.supports(sourceEndpoint)).thenReturn(true);
         when(fetcher.fetch(sourceEndpoint)).thenThrow(new FetchException("boom"));
 
         SourceIngestionService ingestionService = new SourceIngestionService(
-                articleSourceRepository,
                 sourceEndpointRepository,
-                articleRepository,
                 ingestionLogRepository,
                 List.of(fetcher),
-                articleProcessingService,
-                embeddingService,
-                weaviateIndexingService
+                articleDiscoveryService,
+                articleEnrichmentService,
+                articleIndexingService,
+                robotsService
         );
 
-        ingestionService.ingestSingleSource(sourceEndpoint, "corr-fail");
+        UUID correlationId = UUID.randomUUID();
+        ingestionService.ingestSingleSource(sourceEndpoint, correlationId, null);
 
         ArgumentCaptor<IngestionLog> logCaptor = ArgumentCaptor.forClass(IngestionLog.class);
         verify(ingestionLogRepository, atLeastOnce()).save(logCaptor.capture());
@@ -100,14 +94,15 @@ class SourceIngestionServiceTest {
         IngestionLog finalLog = logCaptor.getAllValues().getLast();
         assertThat(finalLog.getStatus()).isEqualTo(IngestionStatus.FAILED);
         assertThat(finalLog.getErrorDetails()).contains("Fetch error: boom");
-        assertThat(finalLog.getCorrelationId()).isEqualTo("corr-fail");
+        assertThat(finalLog.getCorrelationId()).isEqualTo(correlationId);
 
-        verifyNoInteractions(articleRepository, articleProcessingService, embeddingService, weaviateIndexingService);
+        verifyNoInteractions(articleDiscoveryService, articleEnrichmentService, articleIndexingService);
+        verify(sourceEndpointRepository, never()).save(sourceEndpoint);
     }
 
     @Test
-    void ingestSingleSourceHandlesProcessingFailuresAndSuccesses() throws Exception {
-        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
+    void ingestSingleSourceHandlesProcessingFailuresAndSuccesses() {
+        when(fetcher.supports(sourceEndpoint)).thenReturn(true);
         RawArticle ok = RawArticle.builder()
                 .sourceItemId("ok-1")
                 .externalUrl("https://example.com/good")
@@ -121,47 +116,41 @@ class SourceIngestionServiceTest {
                 .rawText("More text")
                 .build();
         when(fetcher.fetch(sourceEndpoint)).thenReturn(List.of(ok, bad));
+        when(robotsService.isAllowed("https://example.com/good")).thenReturn(true);
 
-        when(articleSourceRepository.existsBySourceEndpointAndSourceItemId(sourceEndpoint, "ok-1")).thenReturn(false);
-        when(articleSourceRepository.existsBySourceEndpointAndSourceItemId(sourceEndpoint, "bad-1")).thenReturn(false);
-        when(articleRepository.findByPublisherAndCanonicalUrlHash(
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn(Optional.empty());
+        when(articleDiscoveryService.shouldSkip(ok)).thenReturn(false);
+        when(articleDiscoveryService.shouldSkip(bad)).thenReturn(false);
 
-        // first article succeeds
-        when(articleRepository.save(org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> {
-                    var a = (com.factcheck.collector.domain.entity.Article) inv.getArgument(0);
-                    a.setId(10L);
-                    return a;
-                });
-        when(articleProcessingService.createChunks(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn(List.of("chunk1"));
-        when(embeddingService.embedChunks(List.of("chunk1"), "corr")).thenReturn(List.of(List.of(0.1)));
+        var articleOne = com.factcheck.collector.domain.entity.Article.builder().id(10L).build();
+        var articleTwo = com.factcheck.collector.domain.entity.Article.builder().id(20L).build();
 
-        // first index succeeds, second fails
-        java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger();
-        org.mockito.Mockito.doAnswer(inv -> {
-                    if (count.getAndIncrement() == 0) {
-                        return null;
-                    }
-                    throw new ProcessingFailedException(new RuntimeException("fail"));
-                })
-                .when(weaviateIndexingService)
-                .indexArticleChunks(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq("corr"));
+        when(articleDiscoveryService.discover(sourceEndpoint, ok))
+                .thenReturn(new ArticleDiscoveryService.DiscoveryResult(articleOne, true));
+        when(articleDiscoveryService.discover(sourceEndpoint, bad))
+                .thenReturn(new ArticleDiscoveryService.DiscoveryResult(articleTwo, true));
+
+        when(articleEnrichmentService.enrich(articleOne, ok))
+                .thenReturn(new ArticleEnrichmentService.EnrichmentResult(true, "text-1", null));
+        when(articleEnrichmentService.enrich(articleTwo, bad))
+                .thenReturn(new ArticleEnrichmentService.EnrichmentResult(true, "text-2", null));
+
+        when(articleIndexingService.index(articleOne, "text-1", "00000000-0000-0000-0000-000000000001"))
+                .thenReturn(true);
+        when(articleIndexingService.index(articleTwo, "text-2", "00000000-0000-0000-0000-000000000001"))
+                .thenReturn(false);
 
         SourceIngestionService ingestionService = new SourceIngestionService(
-                articleSourceRepository,
                 sourceEndpointRepository,
-                articleRepository,
                 ingestionLogRepository,
                 List.of(fetcher),
-                articleProcessingService,
-                embeddingService,
-                weaviateIndexingService
+                articleDiscoveryService,
+                articleEnrichmentService,
+                articleIndexingService,
+                robotsService
         );
 
-        ingestionService.ingestSingleSource(sourceEndpoint, "corr");
+        UUID correlationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        ingestionService.ingestSingleSource(sourceEndpoint, correlationId, null);
 
         ArgumentCaptor<IngestionLog> captor = ArgumentCaptor.forClass(IngestionLog.class);
         verify(ingestionLogRepository, atLeastOnce()).save(captor.capture());
@@ -169,36 +158,6 @@ class SourceIngestionServiceTest {
         assertThat(finalLog.getStatus()).isEqualTo(IngestionStatus.PARTIAL);
         assertThat(finalLog.getArticlesProcessed()).isEqualTo(1);
         assertThat(finalLog.getArticlesFailed()).isEqualTo(1);
-        assertThat(finalLog.getCorrelationId()).isEqualTo("corr");
-    }
-
-    @Test
-    void ingestSingleSourceSkipsNonTextMediaPages() throws Exception {
-        when(fetcher.supports(SourceKind.RSS)).thenReturn(true);
-        RawArticle video = RawArticle.builder()
-                .sourceItemId("vid-1")
-                .externalUrl("https://example.com/video/abc")
-                .title("Video")
-                .rawText("")
-                .build();
-        when(fetcher.fetch(sourceEndpoint)).thenReturn(List.of(video));
-
-        SourceIngestionService ingestionService = new SourceIngestionService(
-                articleSourceRepository,
-                sourceEndpointRepository,
-                articleRepository,
-                ingestionLogRepository,
-                List.of(fetcher),
-                articleProcessingService,
-                embeddingService,
-                weaviateIndexingService
-        );
-
-        ingestionService.ingestSingleSource(sourceEndpoint, "corr-skip");
-
-        verify(articleRepository, never()).save(org.mockito.ArgumentMatchers.any());
-        ArgumentCaptor<IngestionLog> captor = ArgumentCaptor.forClass(IngestionLog.class);
-        verify(ingestionLogRepository, atLeastOnce()).save(captor.capture());
-        assertThat(captor.getAllValues().getLast().getArticlesProcessed()).isEqualTo(0);
+        assertThat(finalLog.getCorrelationId()).isEqualTo(correlationId);
     }
 }

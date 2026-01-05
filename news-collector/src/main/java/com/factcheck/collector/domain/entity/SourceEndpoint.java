@@ -48,7 +48,7 @@ public class SourceEndpoint {
 
     @Builder.Default
     @Column(name = "fetch_interval_minutes", nullable = false)
-    private int fetchIntervalMinutes = 30;
+    private int fetchIntervalMinutes = 1440;
 
     @Column(name = "last_fetched_at")
     private Instant lastFetchedAt;
@@ -61,15 +61,24 @@ public class SourceEndpoint {
     private int failureCount = 0;
 
     @Builder.Default
+    @Column(name = "robots_disallowed", nullable = false)
+    private boolean robotsDisallowed = false;
+
+    @Column(name = "blocked_until")
+    private Instant blockedUntil;
+
+    @Column(name = "block_reason", columnDefinition = "text")
+    private String blockReason;
+
+    @Builder.Default
+    @Column(name = "block_count", nullable = false)
+    private int blockCount = 0;
+
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
     @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
-
-    @PreUpdate
-    void preUpdate() {
-        this.updatedAt = Instant.now();
-    }
 }

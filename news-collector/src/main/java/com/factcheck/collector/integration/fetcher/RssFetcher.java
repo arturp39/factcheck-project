@@ -27,7 +27,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RssFetcher implements SourceFetcher {
 
-    private final ArticleContentExtractor contentExtractor;
     @Value("${crawler.user-agent:FactCheckCollector/1.0 (+https://example.com)}")
     private String userAgent;
 
@@ -82,23 +81,11 @@ public class RssFetcher implements SourceFetcher {
                             ? pubDate.toInstant()
                             : Instant.now();
 
-                    String fullText = contentExtractor.extractMainText(link);
-
-                    String rawText = (fullText != null && !fullText.isBlank())
-                            ? fullText
-                            : description;
-
-                    if (rawText == null || rawText.isBlank()) {
-                        log.debug("Skipping RSS item with no usable text: {}", link);
-                        continue;
-                    }
-
                     result.add(RawArticle.builder()
                             .sourceItemId(entry.getUri() != null ? entry.getUri() : link)
                             .externalUrl(link)
                             .title(title)
                             .description(description)
-                            .rawText(rawText)
                             .publishedDate(published)
                             .build());
                 }
@@ -113,7 +100,7 @@ public class RssFetcher implements SourceFetcher {
     }
 
     @Override
-    public boolean supports(SourceKind kind) {
-        return kind == SourceKind.RSS;
+    public boolean supports(SourceEndpoint sourceEndpoint) {
+        return sourceEndpoint.getKind() == SourceKind.RSS;
     }
 }

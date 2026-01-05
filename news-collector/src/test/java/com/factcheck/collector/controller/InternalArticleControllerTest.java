@@ -1,17 +1,11 @@
 package com.factcheck.collector.controller;
 
-import com.factcheck.collector.domain.entity.Article;
-import com.factcheck.collector.domain.entity.ArticleSource;
-import com.factcheck.collector.domain.entity.Publisher;
-import com.factcheck.collector.domain.entity.SourceEndpoint;
-import com.factcheck.collector.domain.enums.ArticleStatus;
 import com.factcheck.collector.dto.ArticleContentResponse;
 import com.factcheck.collector.dto.ArticleMetadataResponse;
 import com.factcheck.collector.dto.SearchRequest;
 import com.factcheck.collector.dto.SearchResponse;
-import com.factcheck.collector.repository.ArticleRepository;
-import com.factcheck.collector.repository.ArticleSourceRepository;
 import com.factcheck.collector.service.ArticleContentService;
+import com.factcheck.collector.service.ArticleMetadataService;
 import com.factcheck.collector.service.ArticleSearchService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,15 +14,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,25 +31,17 @@ class InternalArticleControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ArticleRepository articleRepository;
-
-    @MockitoBean
-    private ArticleSourceRepository articleSourceRepository;
-
-    @MockitoBean
     private ArticleSearchService articleSearchService;
 
     @MockitoBean
     private ArticleContentService articleContentService;
 
+    @MockitoBean
+    private ArticleMetadataService articleMetadataService;
+
     @Test
     void search_passesRequestAndCorrelationIdToService() throws Exception {
-        SearchResponse mockResponse = SearchResponse.builder()
-                .results(List.of())
-                .totalFound(0)
-                .executionTimeMs(5L)
-                .correlationId("cid-1")
-                .build();
+        SearchResponse mockResponse = new SearchResponse(List.of(), 0, 5L, "cid-1");
         when(articleSearchService.search(any(), any())).thenReturn(mockResponse);
 
         String payload = """
@@ -82,41 +66,26 @@ class InternalArticleControllerTest {
 
         verify(articleSearchService).search(reqCaptor.capture(), cidCaptor.capture());
         assertThat(cidCaptor.getValue()).isEqualTo("cid-header");
-        assertThat(reqCaptor.getValue().getEmbedding()).hasSize(768);
+        assertThat(reqCaptor.getValue().embedding()).hasSize(768);
     }
 
     @Test
     void getArticle_returnsMappedMetadataResponse() throws Exception {
-        Publisher publisher = Publisher.builder()
-                .id(10L)
-                .name("Guardian")
-                .build();
+        ArticleMetadataResponse response = new ArticleMetadataResponse(
+                1L,
+                10L,
+                "Guardian",
+                20L,
+                "Guardian RSS",
+                "https://example.com",
+                "Title",
+                Instant.parse("2024-01-01T00:00:00Z"),
+                5,
+                "INDEXED",
+                true
+        );
 
-        SourceEndpoint endpoint = SourceEndpoint.builder()
-                .id(20L)
-                .publisher(publisher)
-                .displayName("Guardian RSS")
-                .build();
-
-        Article article = Article.builder()
-                .id(1L)
-                .publisher(publisher)
-                .canonicalUrl("https://example.com")
-                .canonicalUrlHash("hash")
-                .title("Title")
-                .publishedDate(Instant.parse("2024-01-01T00:00:00Z"))
-                .chunkCount(5)
-                .status(ArticleStatus.PROCESSED)
-                .weaviateIndexed(true)
-                .build();
-
-        when(articleRepository.findById(1L)).thenReturn(Optional.of(article));
-        when(articleSourceRepository.findTopByArticleOrderByFetchedAtDesc(article))
-                .thenReturn(Optional.of(ArticleSource.builder()
-                        .article(article)
-                        .sourceEndpoint(endpoint)
-                        .sourceItemId("item-1")
-                        .build()));
+        when(articleMetadataService.getArticleMetadata(1L)).thenReturn(response);
 
         mockMvc.perform(get("/internal/articles/{id}", 1L))
                 .andExpect(status().isOk())
@@ -128,16 +97,17 @@ class InternalArticleControllerTest {
 
     @Test
     void getArticleContent_delegatesToService() throws Exception {
-        ArticleContentResponse response = ArticleContentResponse.builder()
-                .articleId(1L)
-                .publisherId(10L)
-                .publisherName("Guardian")
-                .sourceEndpointId(20L)
-                .sourceEndpointName("Guardian RSS")
-                .canonicalUrl("https://example.com")
-                .title("Title")
-                .content("Some content")
-                .build();
+        ArticleContentResponse response = new ArticleContentResponse(
+                1L,
+                10L,
+                "Guardian",
+                20L,
+                "Guardian RSS",
+                "https://example.com",
+                "Title",
+                null,
+                "Some content"
+        );
 
         when(articleContentService.getArticleContent(1L)).thenReturn(response);
 
@@ -152,7 +122,8 @@ class InternalArticleControllerTest {
 
     @Test
     void getArticle_returnsBadRequestWhenMissing() throws Exception {
-        when(articleRepository.findById(99L)).thenReturn(Optional.empty());
+        when(articleMetadataService.getArticleMetadata(99L))
+                .thenThrow(new IllegalArgumentException("Article not found: 99"));
 
         mockMvc.perform(get("/internal/articles/{id}", 99L))
                 .andExpect(status().isBadRequest())
@@ -169,7 +140,8 @@ class InternalArticleControllerTest {
                 }
                 """;
 
-        when(articleSearchService.search(any(), any())).thenThrow(new IllegalArgumentException("Embedding must have dimension"));
+        when(articleSearchService.search(any(), any()))
+                .thenThrow(new IllegalArgumentException("Embedding must have dimension"));
 
         mockMvc.perform(post("/internal/articles/search")
                         .contentType(MediaType.APPLICATION_JSON)

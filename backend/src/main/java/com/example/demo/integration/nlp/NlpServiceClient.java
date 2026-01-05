@@ -1,5 +1,7 @@
 package com.example.demo.integration.nlp;
 
+import com.example.demo.integration.nlp.dto.EmbedRequest;
+import com.example.demo.integration.nlp.dto.EmbedResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

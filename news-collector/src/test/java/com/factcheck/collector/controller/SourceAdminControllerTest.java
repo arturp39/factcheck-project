@@ -8,10 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import java.time.Instant;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -32,7 +33,9 @@ class SourceAdminControllerTest {
     void listSources_returnsSources() throws Exception {
         SourceResponse s = new SourceResponse(
                 1L, 10L, "BBC News", SourceKind.RSS, "BBC - Top", "https://example.com/rss",
-                null, null, true, 15, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                null, null, true, 15, Instant.now(), Instant.now(), 0,
+                false, null, null, 0,
+                Instant.now(), Instant.now()
         );
 
         when(sourceService.listSources()).thenReturn(List.of(s));
@@ -47,10 +50,12 @@ class SourceAdminControllerTest {
     void createSource_createsSource() throws Exception {
         SourceResponse saved = new SourceResponse(
                 2L, 20L, "NPR", SourceKind.RSS, "NPR - Top Stories", "https://npr.org/rss",
-                null, null, true, 15, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                null, null, true, 15, Instant.now(), Instant.now(), 0,
+                false, null, null, 0,
+                Instant.now(), Instant.now()
         );
 
-        when(sourceService.createSource(org.mockito.ArgumentMatchers.any())).thenReturn(saved);
+        when(sourceService.createSource(any())).thenReturn(saved);
 
         String payload = """
                 {
@@ -75,10 +80,12 @@ class SourceAdminControllerTest {
     void updateSource_updatesFields() throws Exception {
         SourceResponse updated = new SourceResponse(
                 3L, 30L, "Old", SourceKind.RSS, "Old Feed", "https://old",
-                null, null, false, 60, Instant.now(), Instant.now(), 0, Instant.now(), Instant.now()
+                null, null, false, 60, Instant.now(), Instant.now(), 0,
+                false, null, null, 0,
+                Instant.now(), Instant.now()
         );
 
-        when(sourceService.updateSource(org.mockito.ArgumentMatchers.eq(3L), org.mockito.ArgumentMatchers.any()))
+        when(sourceService.updateSource(eq(3L), any()))
                 .thenReturn(updated);
 
         String payload = """

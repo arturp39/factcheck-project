@@ -1,4 +1,4 @@
-package com.example.demo.controller;
+package com.factcheck.collector.dto;
 
 import java.time.OffsetDateTime;
 

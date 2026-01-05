@@ -3,7 +3,7 @@ package com.factcheck.collector.integration.robots;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Map;
+import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,8 +23,9 @@ class RobotsServiceTest {
                 "text/plain",
                 "TestBot"
         );
-        ConcurrentHashMap<String, crawlercommons.robots.BaseRobotRules> cache = new ConcurrentHashMap<>();
-        cache.put("https://example.com", rules);
+        Object cachedRules = newCachedRules(rules, Instant.now());
+        ConcurrentHashMap<String, Object> cache = new ConcurrentHashMap<>();
+        cache.put("https://example.com:443", cachedRules);
         ReflectionTestUtils.setField(service, "rulesCache", cache);
 
         assertThat(service.isAllowed("https://example.com/allowed/page")).isTrue();
@@ -37,10 +38,26 @@ class RobotsServiceTest {
         var allowAll = new crawlercommons.robots.SimpleRobotRules(
                 crawlercommons.robots.SimpleRobotRules.RobotRulesMode.ALLOW_ALL
         );
-        Map<String, crawlercommons.robots.BaseRobotRules> cache = new ConcurrentHashMap<>();
-        cache.put("https://no-robots.example.com", allowAll);
+        Object cachedRules = newCachedRules(allowAll, Instant.now());
+        ConcurrentHashMap<String, Object> cache = new ConcurrentHashMap<>();
+        cache.put("https://no-robots.example.com:443", cachedRules);
         ReflectionTestUtils.setField(service, "rulesCache", cache);
 
         assertThat(service.isAllowed("https://no-robots.example.com/anything")).isTrue();
+    }
+
+    private static Object newCachedRules(crawlercommons.robots.BaseRobotRules rules, Instant fetchedAt) {
+        try {
+            Class<?> cachedRulesClass =
+                    Class.forName("com.factcheck.collector.integration.robots.RobotsService$CachedRules");
+            var constructor = cachedRulesClass.getDeclaredConstructor(
+                    crawlercommons.robots.BaseRobotRules.class,
+                    Instant.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(rules, fetchedAt);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to construct cached rules for test", e);
+        }
     }
 }

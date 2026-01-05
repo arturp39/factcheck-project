@@ -8,7 +8,6 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.net.InetSocketAddress;
@@ -18,8 +17,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 class RssFetcherTest {
 
@@ -38,7 +35,7 @@ class RssFetcherTest {
     }
 
     @Test
-    void fetch_parsesEntriesAndUsesContentExtractor() throws Exception {
+    void fetch_parsesEntriesAndReturnsMetadata() throws Exception {
         String rss = """
                 <rss version="2.0">
                   <channel>
@@ -66,10 +63,7 @@ class RssFetcherTest {
         });
         server.start();
 
-        ArticleContentExtractor extractor = Mockito.mock(ArticleContentExtractor.class);
-        when(extractor.extractMainText(anyString())).thenReturn("full text");
-
-        RssFetcher fetcher = new RssFetcher(extractor);
+        RssFetcher fetcher = new RssFetcher();
         ReflectionTestUtils.setField(fetcher, "userAgent", "TestAgent/1.0");
 
         Publisher publisher = Publisher.builder().id(10L).name("Test Publisher").build();
@@ -84,8 +78,7 @@ class RssFetcherTest {
 
         assertThat(articles).hasSize(2);
         assertThat(articles.getFirst().getExternalUrl()).contains("/article-1");
-        assertThat(articles.getFirst().getRawText()).isEqualTo("full text");
-        assertThat(articles.get(1).getRawText()).isEqualTo("full text");
+        assertThat(articles.getFirst().getRawText()).isNull();
         assertThat(articles.getFirst().getPublishedDate()).isBefore(Instant.now().plusSeconds(60));
     }
 
@@ -94,8 +87,7 @@ class RssFetcherTest {
         server.createContext("/feed", exchange -> exchange.sendResponseHeaders(500, -1));
         server.start();
 
-        ArticleContentExtractor extractor = Mockito.mock(ArticleContentExtractor.class);
-        RssFetcher fetcher = new RssFetcher(extractor);
+        RssFetcher fetcher = new RssFetcher();
         Publisher publisher = Publisher.builder().id(11L).name("Test Publisher").build();
         SourceEndpoint endpoint = SourceEndpoint.builder()
                 .id(2L)

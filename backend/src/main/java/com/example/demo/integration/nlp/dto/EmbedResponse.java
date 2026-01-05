@@ -1,4 +1,4 @@
-package com.example.demo.integration.nlp;
+package com.example.demo.integration.nlp.dto;
 
 import lombok.Data;
 

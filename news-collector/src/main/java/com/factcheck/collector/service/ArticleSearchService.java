@@ -19,28 +19,28 @@ public class ArticleSearchService {
     public SearchResponse search(SearchRequest request, String correlationId) {
 
         log.info("Search request received: limit={}, minScore={} correlationId={}",
-                request.getLimit(), request.getMinScore(), correlationId);
+                request.limit(), request.minScore(), correlationId);
 
-        if (request.getEmbedding() == null || request.getEmbedding().size() != embeddingDimension) {
+        if (request.embedding() == null || request.embedding().size() != embeddingDimension) {
             throw new IllegalArgumentException("Embedding must have dimension " + embeddingDimension);
         }
 
         long start = System.currentTimeMillis();
 
         var results = weaviateIndexingService.searchByEmbedding(
-                request.getEmbedding(),
-                request.getLimit(),
-                request.getMinScore(),
+                request.embedding(),
+                request.limit(),
+                request.minScore(),
                 correlationId
         );
 
         long duration = System.currentTimeMillis() - start;
 
-        return SearchResponse.builder()
-                .results(results)
-                .totalFound(results.size())
-                .executionTimeMs(duration)
-                .correlationId(correlationId)
-                .build();
+        return new SearchResponse(
+                results,
+                results.size(),
+                duration,
+                correlationId
+        );
     }
 }
