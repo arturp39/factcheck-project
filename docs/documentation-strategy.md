@@ -2,9 +2,10 @@
 
 Standards & tools
 - Specs in OpenAPI 3.0 (`docs/openapi/*.yaml`); lint with Redocly CLI.
-- Error envelopes standardized as `ErrorResponse`; correlation IDs via `X-Correlation-Id`.
+- Error envelopes standardized as `ErrorResponse` in backend/collector; NLP uses FastAPI `detail` for 4xx/503.
+- Correlation IDs via `X-Correlation-Id`.
 - Examples included for success and validation failures.
-- Versioning: bump `info.version`; archive breaking changes under `docs/openapi/archive/`.
+- Versioning: bump `info.version`; archive breaking changes under `docs/openapi/archive/` (create when needed).
 - Naming conventions: OpenAPI files use kebab-case (e.g., `nlp.openapi.yaml`); schema/component names use PascalCase; examples are in `docs/examples/`.
 
 Structure

@@ -10,7 +10,7 @@ Vertex errors
 - For offline dev set `NLP_USE_FAKE_EMBEDDINGS=true` to avoid Vertex calls.
 
 Evidence search empty
-- Ensure collector ran at least once: `curl http://localhost:8081/admin/ingestion/run`.
+- Ensure collector ran at least once: `curl -X POST http://localhost:8081/ingestion/run`.
 - Check Weaviate distance threshold `WEAVIATE_MAX_DISTANCE`; if too low, raise slightly (e.g., 0.6) and reindex.
 
 DB migrations

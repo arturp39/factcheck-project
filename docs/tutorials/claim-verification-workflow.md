@@ -18,30 +18,30 @@ Steps
 
 2) Fetch stored claim  
    ```bash
-   curl -s http://localhost:8080/api/claims/{$CLAIM_ID}
+   curl -s http://localhost:8080/api/claims/{CLAIM_ID}
    ```
 
 3) Re-run evidence search (optional)  
    ```bash
-   curl -s http://localhost:8080/api/claims/{$CLAIM_ID}/evidence
+   curl -s http://localhost:8080/api/claims/{CLAIM_ID}/evidence
    ```
 
 4) Ask a follow-up  
    ```bash
-   curl -s -X POST http://localhost:8080/api/claims/{$CLAIM_ID}/followup \
+   curl -s -X POST http://localhost:8080/api/claims/{CLAIM_ID}/followup \
      -H "Content-Type: application/json" \
      -d '{"question":"What sources support this verdict?"}'
    ```
 
 5) Run bias analysis  
    ```bash
-   curl -s -X POST http://localhost:8080/api/claims/{$CLAIM_ID}/bias
+   curl -s -X POST http://localhost:8080/api/claims/{CLAIM_ID}/bias
    ```
 
 Edge cases
-- Empty claim → 400.
-- Claim longer than `APP_CLAIM_MAX_LENGTH` → 400.
-- Follow-up question empty → 400.
+- Empty claim -> 400.
+- Claim longer than `APP_CLAIM_MAX_LENGTH` -> 400.
+- Follow-up question empty -> 400.
 
 What to expect
 - Latency includes embedding + Weaviate + Vertex LLM; evidence size is capped by `APP_SEARCH_TOP_K`.

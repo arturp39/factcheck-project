@@ -53,6 +53,9 @@ public class SourceEndpoint {
     @Column(name = "last_fetched_at")
     private Instant lastFetchedAt;
 
+    @Column(name = "last_attempted_at")
+    private Instant lastAttemptedAt;
+
     @Column(name = "last_success_at")
     private Instant lastSuccessAt;
 

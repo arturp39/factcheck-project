@@ -21,7 +21,7 @@ Backend
 Collector
 - Trigger ingestion for all sources:
   ```bash
-  curl -s -X POST "http://localhost:8081/admin/ingestion/run?correlationId=demo-1"
+  curl -s -X POST "http://localhost:8081/ingestion/run?correlationId=demo-1"
   ```
 - List sources:
   ```bash

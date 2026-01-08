@@ -27,6 +27,18 @@ BEGIN
   END IF;
 END $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'ingestion_run_status' AND n.nspname = 'content'
+  ) THEN
+    CREATE TYPE content.ingestion_run_status AS ENUM ('RUNNING', 'COMPLETED', 'FAILED');
+  END IF;
+END $$;
+
 -- updated_at trigger helper
 CREATE OR REPLACE FUNCTION content.set_updated_at()
 RETURNS TRIGGER AS $$
@@ -77,7 +89,12 @@ CREATE TABLE IF NOT EXISTS content.source_endpoints (
   fetch_interval_minutes INT NOT NULL DEFAULT 1440,
   last_fetched_at        TIMESTAMPTZ,
   last_success_at        TIMESTAMPTZ,
+  last_attempted_at      TIMESTAMPTZ,
   failure_count          INT NOT NULL DEFAULT 0,
+  robots_disallowed      BOOLEAN NOT NULL DEFAULT FALSE,
+  blocked_until          TIMESTAMPTZ,
+  block_reason           TEXT,
+  block_count            INT NOT NULL DEFAULT 0,
   created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -198,12 +215,16 @@ CREATE TABLE IF NOT EXISTS content.ingestion_runs (
   id             BIGSERIAL PRIMARY KEY,
   started_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at   TIMESTAMPTZ,
-  status         VARCHAR(50) NOT NULL,
+  status         content.ingestion_run_status NOT NULL,
   correlation_id UUID NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_ingestion_runs_started_at
   ON content.ingestion_runs (started_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_ingestion_single_running
+  ON content.ingestion_runs ((1))
+  WHERE status = 'RUNNING';
 
 -- Per-endpoint ingestion logs (attempts)
 CREATE TABLE IF NOT EXISTS content.ingestion_logs (
@@ -243,9 +264,6 @@ CREATE TABLE IF NOT EXISTS content.mbfc_sources (
   credibility         TEXT,
   synced_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_mbfc_sources_mbfc_url
-  ON content.mbfc_sources (mbfc_url);
 
 CREATE INDEX IF NOT EXISTS idx_mbfc_sources_domain
   ON content.mbfc_sources (source_url_domain);

@@ -3,6 +3,8 @@ package com.factcheck.collector.domain.entity;
 import com.factcheck.collector.domain.enums.IngestionStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,12 +22,16 @@ public class IngestionLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_endpoint_id")
+    @Version
+    @Column(nullable = false)
+    private long version;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "source_endpoint_id", nullable = false)
     private SourceEndpoint sourceEndpoint;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "run_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "run_id", nullable = true)
     private IngestionRun run;
 
     @Builder.Default
@@ -48,6 +54,7 @@ public class IngestionLog {
     private int articlesFailed = 0;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(length = 50)
     private IngestionStatus status;
 

@@ -9,9 +9,9 @@ Prerequisites
 Steps
 1) Start ingestion for all enabled sources  
    ```bash
-   curl -s -X POST "http://localhost:8081/admin/ingestion/run?correlationId=demo-1"
+   curl -s -X POST "http://localhost:8081/ingestion/run?correlationId=demo-1"
    ```
-   Response: plain text with correlationId.
+   Response: JSON `IngestionRunStartResponse` (runId, correlationId, tasksEnqueued, status).
 
 2) Check latest runs  
    ```bash
@@ -23,10 +23,10 @@ Steps
    ```bash
    curl -s "http://localhost:8081/admin/ingestion/runs/{RUN_ID}"
    ```
-
-4) (Optional) Trigger a single source  
+ 
+4) (Optional) Abort a run  
    ```bash
-   curl -s -X POST "http://localhost:8081/admin/ingestion/run/{SOURCE_ID}?correlationId=demo-2"
+   curl -s -X POST "http://localhost:8081/admin/ingestion/runs/{RUN_ID}/abort"
    ```
 
 What to expect

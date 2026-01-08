@@ -13,7 +13,7 @@ Services
 
 Flows
 - Verify claim: user -> Backend -> NLP embed -> Weaviate search -> Vertex LLM -> Postgres log.
-- Ingestion: Admin/scheduler -> Collector -> fetch sources -> NLP embed chunks -> Weaviate index + Postgres content metadata.
+- Ingestion: Admin/scheduler -> Collector -> fetch source_endpoints -> NLP embed chunks -> Weaviate index + Postgres content metadata.
 
 Infrastructure
-- Docker Compose (`factcheck-platform/docker-compose.yml`) with shared network `factcheck_net`, volumes `postgres_data`, `weaviate_data`.
+- Docker Compose (`infra/docker-compose.yml`) with shared network `factcheck_net`, volumes `postgres_data`, `weaviate_data`.

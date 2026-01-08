@@ -46,8 +46,10 @@ nlp-service:
 ingestion:
   max-parallel-sources: ${INGESTION_MAX_PARALLEL_SOURCES:1}
   interval-ms: ${INGESTION_INTERVAL_MS:600000}
+  run-timeout: ${INGESTION_RUN_TIMEOUT:PT6H}
   block-threshold: ${INGESTION_BLOCK_THRESHOLD:2}
   block-duration: ${INGESTION_BLOCK_DURATION:PT24H}
+  task-lease-seconds: 1800
 
 crawler:
   user-agent: ${CRAWLER_USER_AGENT:FactCheckCollector/1.0 (+https://example.com)}
@@ -62,3 +64,11 @@ newsapi:
   max-pages-per-batch: ${NEWSAPI_MAX_PAGES_PER_BATCH:5}
   max-requests-per-ingestion: ${NEWSAPI_MAX_REQUESTS_PER_INGESTION:100}
   sort-by: ${NEWSAPI_SORT_BY:publishedAt}
+
+cloud-tasks:
+  project-id: ${GCP_PROJECT:}
+  location: ${CLOUD_TASKS_LOCATION:}
+  queue: ${CLOUD_TASKS_QUEUE:}
+  target-url: ${CLOUD_TASKS_TARGET_URL:http://localhost:8081/ingestion/task}
+  service-account-email: ${CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL:}
+  access-token: ${CLOUD_TASKS_ACCESS_TOKEN:}

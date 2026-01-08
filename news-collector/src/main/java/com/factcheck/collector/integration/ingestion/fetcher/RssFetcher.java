@@ -1,0 +1,106 @@
+package com.factcheck.collector.integration.ingestion.fetcher;
+
+import com.factcheck.collector.domain.entity.SourceEndpoint;
+import com.factcheck.collector.domain.enums.SourceKind;
+import com.factcheck.collector.exception.FetchException;
+import com.rometools.rome.feed.synd.SyndEntry;
+import com.rometools.rome.feed.synd.SyndFeed;
+import com.rometools.rome.io.SyndFeedInput;
+import com.rometools.rome.io.XmlReader;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class RssFetcher implements SourceFetcher {
+
+    @Value("${crawler.user-agent:FactCheckCollector/1.0 (+https://example.com)}")
+    private String userAgent;
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    @Override
+    public List<RawArticle> fetch(SourceEndpoint sourceEndpoint) throws FetchException {
+        String rssUrl = sourceEndpoint.getRssUrl();
+        log.info("Fetching RSS from endpoint id={} url={}", sourceEndpoint.getId(), rssUrl);
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(rssUrl))
+                    .GET()
+                    .header("User-Agent", userAgent)
+                    .build();
+
+            HttpResponse<InputStream> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new FetchException(
+                        "RSS HTTP status " + response.statusCode() + " for " + rssUrl, null
+                );
+            }
+
+            try (InputStream is = response.body();
+                 XmlReader reader = new XmlReader(is)) {
+
+                SyndFeedInput input = new SyndFeedInput();
+                SyndFeed feed = input.build(reader);
+
+                List<RawArticle> result = new ArrayList<>();
+
+                for (SyndEntry entry : feed.getEntries()) {
+
+                    String link = entry.getLink();
+                    String title = entry.getTitle();
+
+                    if (link == null || title == null || title.isBlank()) {
+                        continue;
+                    }
+
+                    String description = entry.getDescription() != null
+                            ? entry.getDescription().getValue()
+                            : "";
+
+                    Date pubDate = entry.getPublishedDate();
+                    Instant published = pubDate != null
+                            ? pubDate.toInstant()
+                            : Instant.now();
+
+                    result.add(RawArticle.builder()
+                            .sourceItemId(entry.getUri() != null ? entry.getUri() : link)
+                            .externalUrl(link)
+                            .title(title)
+                            .description(description)
+                            .publishedDate(published)
+                            .build());
+                }
+
+                log.info("Fetched {} RSS items from endpoint id={}", result.size(), sourceEndpoint.getId());
+                return result;
+            }
+
+        } catch (Exception e) {
+            throw new FetchException("Failed to fetch RSS from " + rssUrl, e);
+        }
+    }
+
+    @Override
+    public boolean supports(SourceEndpoint sourceEndpoint) {
+        return sourceEndpoint.getKind() == SourceKind.RSS;
+    }
+}

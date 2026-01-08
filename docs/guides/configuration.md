@@ -1,19 +1,23 @@
 # Configuration
 
 Env files
-- Copy `factcheck-platform/.env.example` to `.env` and adjust.
-- Docker Compose reads `.env`; backend/collector Spring apps also read the same variables inside containers.
+- Copy `infra/.env.example` to `infra/.env` and adjust.
+- Docker Compose reads `infra/.env`; backend/collector/NLP containers read the same variables.
 
 Key settings
-- Database: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`.
-- Backend: `BACKEND_PORT`, `APP_CLAIM_MAX_LENGTH`, `APP_SEARCH_TOP_K`, `WEAVIATE_MAX_DISTANCE`.
-- Collector: `COLLECTOR_PORT`, `INGESTION_MAX_PARALLEL_SOURCES`, `INGESTION_INTERVAL_MS`, `SEARCH_EMBEDDING_DIMENSION`, crawler UA.
-- NLP: `NLP_PORT`, `NLP_USE_FAKE_EMBEDDINGS`, `NLP_VERTEX_*`, `NLP_MAX_*` limits.
-- Vertex AI: `VERTEX_PROJECT_ID`, `VERTEX_LOCATION`, `VERTEX_MODEL_NAME`, `VERTEX_CREDENTIALS_PATH` (backend); `GCP_*`/`NLP_VERTEX_*` (NLP).
-- Weaviate: `WEAVIATE_BASE_URL`, `WEAVIATE_API_KEY`, `WEAVIATE_PORT`, `WEAVIATE_DEFAULT_VECTORIZER=none`, `WEAVIATE_QUERY_DEFAULTS_LIMIT`.
+- Database: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `SPRING_DATASOURCE_URL`.
+- Backend: `BACKEND_PORT`, `APP_CLAIM_MAX_LENGTH`, `APP_SEARCH_TOP_K`, `APP_REST_CONNECT_TIMEOUT_MS`, `APP_REST_READ_TIMEOUT_MS`.
+- Collector: `COLLECTOR_PORT`, `INGESTION_MAX_PARALLEL_SOURCES`, `INGESTION_INTERVAL_MS`, `SEARCH_EMBEDDING_DIMENSION`, `CRAWLER_USER_AGENT`.
+- NLP: `NLP_PORT`, `NLP_USE_FAKE_EMBEDDINGS`, `NLP_VERTEX_*` limits.
+- Vertex AI (backend): `VERTEX_PROJECT_ID`, `VERTEX_LOCATION`, `VERTEX_MODEL_NAME`, `VERTEX_CREDENTIALS_PATH`.
+- Weaviate: `WEAVIATE_PORT`, `WEAVIATE_API_KEY`, `WEAVIATE_MAX_DISTANCE`, `WEAVIATE_DEFAULT_VECTORIZER=none`, `WEAVIATE_QUERY_DEFAULTS_LIMIT`.
+  - For non-Docker runs set `WEAVIATE_BASE_URL` (backend + collector).
+- NewsAPI: `NEWSAPI_API_KEY`, `NEWSAPI_BASE_URL`, `NEWSAPI_MAX_SOURCES_PER_REQUEST`, `NEWSAPI_MAX_PAGES_PER_BATCH`, `NEWSAPI_MAX_REQUESTS_PER_INGESTION`, `NEWSAPI_SORT_BY`.
+- MBFC (RapidAPI): `RAPIDAPI_KEY` (optionally `MBFC_RAPIDAPI_BASE_URL`, `MBFC_RAPIDAPI_HOST`).
 
 Profiles
-- Backend/collector default to `prod` profile; DB schema is applied by Flyway migrations in `classpath:db/migration`.
+- Collector uses `SPRING_PROFILES_ACTIVE` (default `prod` in `infra/.env`).
+- Backend uses the default Spring profile unless set; both services run Flyway migrations from `classpath:db/migration`.
 
 Correlation IDs
 - Optional request header `X-Correlation-Id`. Services generate and echo when absent; logged consistently.

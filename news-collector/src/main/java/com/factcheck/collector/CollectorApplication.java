@@ -9,4 +9,3 @@ public class CollectorApplication {
 		SpringApplication.run(CollectorApplication.class, args);
 	}
 }
-

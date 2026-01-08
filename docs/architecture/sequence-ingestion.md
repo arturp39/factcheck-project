@@ -1,10 +1,10 @@
 # Sequence: Ingestion & Indexing
 
-1) Admin triggers `POST /admin/ingestion/run` (or scheduler) on collector.
-2) Collector fetches enabled sources from Postgres.
-3) For each source, fetch articles (RSS/API/HTML) and normalize content.
-4) Split into chunks, call NLP `/embed` for embeddings.
-5) Store article metadata/chunk counts in Postgres `content.articles`.
-6) Index chunks into Weaviate `ArticleChunk` with supplied vectors and metadata.
-7) Record run stats in `content.ingestion_logs` (fetched/processed/failed, status, correlationId).
-8) Backend evidence search later queries these Weaviate vectors.
+1) Admin/scheduler triggers `POST /ingestion/run` on collector (optional `correlationId`).
+2) Collector creates `content.ingestion_runs` and per-endpoint `content.ingestion_logs`.
+3) Collector enqueues tasks for eligible `content.source_endpoints`.
+4) Task handler claims the log row (lease) and selects a `SourceFetcher` (RSS/API).
+5) Discovery upserts `content.articles` + `content.article_sources` for each raw item.
+6) Enrichment fetches/extracts content (or uses provided text) and writes `content.article_content`.
+7) Indexing calls NLP `/preprocess` + `/embed`, then writes chunks to Weaviate `ArticleChunk`.
+8) Collector updates article status/chunk counts and finalizes ingestion logs/runs.

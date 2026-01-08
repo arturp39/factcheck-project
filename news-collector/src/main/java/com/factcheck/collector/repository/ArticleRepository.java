@@ -15,4 +15,6 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     List<Article> findByStatus(ArticleStatus status);
 
     List<Article> findByPublisherAndStatus(Publisher publisher, ArticleStatus status);
+
+    boolean existsByPublisher(Publisher publisher);
 }

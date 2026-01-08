@@ -132,16 +132,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/FastApiError'
               examples:
                 provider-down:
                   value:
-                    timestamp: "2025-12-19T10:00:00Z"
-                    status: 503
-                    error: "Service Unavailable"
-                    message: "Embedding generation failed"
-                    path: "/embed"
-                    correlationId: demo-789
+                    detail: "Embedding generation failed"
 components:
   parameters:
     CorrelationIdHeader:
@@ -157,24 +152,14 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/FastApiError'
           example:
-            timestamp: "2025-12-19T08:00:00Z"
-            status: 400
-            error: "Bad Request"
-            message: "text cannot be empty or whitespace only"
-            path: "/preprocess"
-            correlationId: "abc"
+            detail: "text cannot be empty or whitespace only"
   schemas:
-    ErrorResponse:
+    FastApiError:
       type: object
       properties:
-        timestamp: { type: string, format: date-time }
-        status: { type: integer }
-        error: { type: string }
-        message: { type: string }
-        path: { type: string }
-        correlationId: { type: string }
+        detail: { type: string }
     PreprocessRequest:
       type: object
       required: [text]

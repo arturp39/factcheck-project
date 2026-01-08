@@ -24,21 +24,8 @@ public class Publisher {
     @Column(name = "country_code", length = 2)
     private String countryCode;
 
-    @Column(name = "language_code", length = 10)
-    private String languageCode;
-
-    @Column(name = "bias_label", length = 100)
-    private String biasLabel;
-
-    @Builder.Default
-    @Column(name = "reliability_score", nullable = false)
-    private double reliabilityScore = 0.50;
-
     @Column(name = "website_url", columnDefinition = "text")
     private String websiteUrl;
-
-    @Column(name = "mbfc_url", columnDefinition = "text")
-    private String mbfcUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mbfc_source_id")

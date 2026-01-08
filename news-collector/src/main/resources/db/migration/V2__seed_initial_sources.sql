@@ -2,72 +2,58 @@
 
 -- 1) PUBLISHERS
 -- BBC
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('BBC News', 'GB', 'en-gb', 'center', 0.85, 'https://www.bbc.co.uk/news')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('BBC News', 'GB', 'en-gb', 'https://www.bbc.com')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- NPR
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('NPR', 'US', 'en', 'center-left', 0.85, 'https://www.npr.org')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('NPR', 'US', 'en', 'https://www.npr.org')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- The Guardian
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('The Guardian', 'GB', 'en', 'left-center', 0.80, 'https://www.theguardian.com')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('The Guardian', 'GB', 'en', 'https://www.theguardian.com')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- Al Jazeera
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('Al Jazeera', NULL, 'en', 'mixed', 0.82, 'https://www.aljazeera.com')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('Al Jazeera', NULL, 'en', 'https://www.aljazeera.com')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- Euronews
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('Euronews', 'EU', 'en', 'mixed', 0.80, 'https://www.euronews.com')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('Euronews', 'EU', 'en', 'https://www.euronews.com')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- France 24
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('France 24', 'FR', 'en', 'center', 0.80, 'https://www.france24.com')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('France 24', 'FR', 'en', 'https://www.france24.com')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- ABC News (Australia)
-INSERT INTO content.publishers (name, country_code, language_code, bias_label, reliability_score, website_url)
-VALUES ('ABC News (Australia)', 'AU', 'en', 'center', 0.80, 'https://www.abc.net.au/news')
+INSERT INTO content.publishers (name, country_code, language_code, website_url)
+VALUES ('ABC News (Australia)', 'AU', 'en', 'https://www.abc.net.au')
 ON CONFLICT (LOWER(name)) DO UPDATE
     SET country_code = EXCLUDED.country_code,
         language_code = EXCLUDED.language_code,
-        bias_label = EXCLUDED.bias_label,
-        reliability_score = EXCLUDED.reliability_score,
         website_url = EXCLUDED.website_url;
 
 -- 2) SOURCE ENDPOINTS (RSS feeds)

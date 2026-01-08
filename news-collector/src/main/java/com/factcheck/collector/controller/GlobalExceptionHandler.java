@@ -1,6 +1,7 @@
 package com.factcheck.collector.controller;
 
 import com.factcheck.collector.dto.ErrorResponse;
+import com.factcheck.collector.exception.MbfcQuotaExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -25,6 +26,11 @@ public class GlobalExceptionHandler {
         return build(ex, request, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(MbfcQuotaExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMbfcQuota(MbfcQuotaExceededException ex, HttpServletRequest request) {
+        return buildWarn(ex, request, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         return build(ex, request, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -36,6 +42,23 @@ public class GlobalExceptionHandler {
         String correlationId = MDC.get("corrId");
         String path = request.getRequestURI();
         log.error("Request failed status={} path={} corrId={}", status.value(), path, correlationId, ex);
+
+        ErrorResponse body = ErrorResponse.of(
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getMessage(),
+                path,
+                correlationId
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private ResponseEntity<ErrorResponse> buildWarn(Exception ex,
+                                                    HttpServletRequest request,
+                                                    HttpStatus status) {
+        String correlationId = MDC.get("corrId");
+        String path = request.getRequestURI();
+        log.warn("Request failed status={} path={} corrId={}", status.value(), path, correlationId, ex);
 
         ErrorResponse body = ErrorResponse.of(
                 status.value(),

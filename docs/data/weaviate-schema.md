@@ -15,5 +15,5 @@ Queries
 - Fields requested: `text`, `articleTitle`, `sourceName`, `_additional { distance }`.
 
 Inserts
-- Collector writes chunks via Weaviate HTTP `/v1/objects` with provided vector.
+- Collector writes chunks via Weaviate HTTP `/v1/batch/objects` with provided vector.
 - Default vectorizer set to `none`; `X-API-KEY` used when configured.

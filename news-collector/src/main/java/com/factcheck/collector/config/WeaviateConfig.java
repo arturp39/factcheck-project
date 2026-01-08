@@ -1,6 +1,6 @@
 package com.factcheck.collector.config;
 
-import com.factcheck.collector.service.WeaviateIndexingService;
+import com.factcheck.collector.service.processing.WeaviateIndexingService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
