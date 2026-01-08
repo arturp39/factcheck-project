@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Containers unhealthy
-- Check logs: `docker compose logs backend collector nlp weaviate postgres`.
+- Check logs: `docker compose logs backend collector nlp weaviate postgres-backend postgres-collector`.
 - Weaviate ready probe failing: ensure `WEAVIATE_PORT` not conflicting; verify host port free.
 - Postgres failing health: confirm credentials in `.env` match mounted init scripts.
 

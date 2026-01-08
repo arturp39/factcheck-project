@@ -35,7 +35,7 @@
             <textarea id="claim"
                       name="claim"
                       class="form-textarea"
-                      placeholder="Example: The UK Ministry of Defence is planning to unify all intelligence units under a single command."
+                      placeholder="Example: The European Central Bank cut its main interest rate at its most recent meeting."
                       required></textarea>
 
             <div class="form-footer">
@@ -47,9 +47,21 @@
     <section class="card card-hint">
         <h3 class="section-subtitle">Tips for good claims</h3>
         <ul class="hint-list">
-            <li>Use concrete, factual statements (who / what / when / where).</li>
+            <li>Use concrete, factual statements.</li>
             <li>Avoid very broad or vague opinions (e.g. "This politician is bad").</li>
             <li>Keep the claim under 2-3 sentences for best results.</li>
+        </ul>
+    </section>
+
+    <section class="card" th:if="${!#lists.isEmpty(recentClaims)}">
+        <h3 class="section-subtitle">Recent conversations</h3>
+        <ul class="history-list">
+            <li th:each="c : ${recentClaims}" class="history-item">
+                <a th:href="@{'/history/' + ${c.id}}" class="history-link">
+                    <span class="history-claim" th:text="${c.claimText}">Claim text</span>
+                    <span class="history-meta" th:text="${c.verdict} ?: 'unclear'">unclear</span>
+                </a>
+            </li>
         </ul>
     </section>
 

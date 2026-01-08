@@ -1,30 +1,63 @@
 services:
-  postgres:
-    # Relational DB. Persists data with volume `postgres_data`.
+  postgres-backend:
+    # Backend relational DB. Persists data with volume `postgres_backend_data`.
     image: postgres:16
-    container_name: factcheck-postgres
+    container_name: factcheck-postgres-backend
     env_file:
       - .env
     environment:
       # DB init credentials
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${BACKEND_POSTGRES_DB}
+      POSTGRES_USER: ${BACKEND_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${BACKEND_POSTGRES_PASSWORD}
     ports:
       # HOST:CONTAINER mapping for local access (optional in production).
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${BACKEND_POSTGRES_PORT:-5433}:5432"
     volumes:
       # Persistent DB storage.
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_backend_data:/var/lib/postgresql/data
     networks:
       # Isolated internal network for inter-container traffic.
       - factcheck_net
     healthcheck:
-      # pg_isready + querythat  ensures DB is up and accepts queries.
+      # pg_isready + query that ensures DB is up and accepts queries.
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} && psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -tAc \"SELECT 1\" >/dev/null 2>&1"
+          "pg_isready -U ${BACKEND_POSTGRES_USER} -d ${BACKEND_POSTGRES_DB} && psql -U ${BACKEND_POSTGRES_USER} -d ${BACKEND_POSTGRES_DB} -tAc \"SELECT 1\" >/dev/null 2>&1"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      # Give Postgres time to init DB + run /docker-entrypoint-initdb.d scripts.
+      start_period: 25s
+
+  postgres-collector:
+    # Collector relational DB. Persists data with volume `postgres_collector_data`.
+    image: postgres:16
+    container_name: factcheck-postgres-collector
+    env_file:
+      - .env
+    environment:
+      # DB init credentials
+      POSTGRES_DB: ${COLLECTOR_POSTGRES_DB}
+      POSTGRES_USER: ${COLLECTOR_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${COLLECTOR_POSTGRES_PASSWORD}
+    ports:
+      # HOST:CONTAINER mapping for local access (optional in production).
+      - "${COLLECTOR_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Persistent DB storage.
+      - postgres_collector_data:/var/lib/postgresql/data
+    networks:
+      # Isolated internal network for inter-container traffic.
+      - factcheck_net
+    healthcheck:
+      # pg_isready + query that ensures DB is up and accepts queries.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${COLLECTOR_POSTGRES_USER} -d ${COLLECTOR_POSTGRES_DB} && psql -U ${COLLECTOR_POSTGRES_USER} -d ${COLLECTOR_POSTGRES_DB} -tAc \"SELECT 1\" >/dev/null 2>&1"
         ]
       interval: 5s
       timeout: 3s
@@ -40,7 +73,6 @@ services:
     env_file:
       - .env
     environment:
-      # Vectorizer is set to none, vectors are supplied by NLP service.
       QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT}
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTH_ANON}
       PERSISTENCE_DATA_PATH: /var/lib/weaviate
@@ -74,8 +106,6 @@ services:
       NLP_PORT: 8000
       NLP_USE_FAKE_EMBEDDINGS: ${NLP_USE_FAKE_EMBEDDINGS:-true}
       NLP_LOG_LEVEL: ${NLP_LOG_LEVEL:-INFO}
-      NLP_SERVICE_NAME: ${NLP_SERVICE_NAME:-nlp-service}
-      NLP_SERVICE_VERSION: ${NLP_SERVICE_VERSION:-1.0.0}
 
       # Vertex/GCP config.
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
@@ -126,9 +156,9 @@ services:
       SERVER_PORT: 8080
 
       # DB connection.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-backend:5432/${BACKEND_POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${BACKEND_POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${BACKEND_POSTGRES_PASSWORD}
 
       # Service discovery inside docker network with service names.
       NLP_SERVICE_URL: http://nlp:8000
@@ -145,7 +175,7 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       # Ensure dependencies are ready before backend starts
-      postgres:
+      postgres-backend:
         condition: service_healthy
       weaviate:
         condition: service_healthy
@@ -169,24 +199,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
 
       # DB connection.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-collector:5432/${COLLECTOR_POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${COLLECTOR_POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${COLLECTOR_POSTGRES_PASSWORD}
 
       # Dependencies inside docker network.
       NLP_SERVICE_URL: http://nlp:8000
       WEAVIATE_BASE_URL: http://weaviate:8080
       WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-}
 
-      # Runtime tuning vars.
-      INGESTION_MAX_PARALLEL_SOURCES: ${INGESTION_MAX_PARALLEL_SOURCES:-1}
-      INGESTION_INTERVAL_MS: ${INGESTION_INTERVAL_MS:-600000}
-      CRAWLER_USER_AGENT: ${CRAWLER_USER_AGENT:-FactCheckCollector/1.0 (+https://example.com)}
     ports:
       # Exposes collector.
       - "${COLLECTOR_PORT:-8081}:8081"
     depends_on:
-      postgres:
+      postgres-collector:
         condition: service_healthy
       weaviate:
         condition: service_healthy
@@ -202,5 +228,6 @@ networks:
 
 volumes:
   # Persist DB and vector store data across container rebuilds.
-  postgres_data:
+  postgres_backend_data:
+  postgres_collector_data:
   weaviate_data:

@@ -1,5 +1,6 @@
 package com.example.demo.integration.nlp;
 
+import com.example.demo.exception.NlpServiceException;
 import com.example.demo.integration.nlp.dto.EmbedRequest;
 import com.example.demo.integration.nlp.dto.EmbedResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,20 +26,28 @@ public class NlpServiceClient {
     private String baseUrl;
 
     public EmbedResponse embed(List<String> texts, String correlationId) {
+        EmbedRequest req = new EmbedRequest();
+        req.setTexts(texts);
+        req.setCorrelationId(correlationId);
+        return embed(req);
+    }
+
+    public EmbedResponse embed(EmbedRequest request) {
         try {
-            EmbedRequest req = new EmbedRequest();
-            req.setTexts(texts);
-            req.setCorrelationId(correlationId);
+            if (request == null) {
+                throw new NlpServiceException("NLP embed failed: request is null");
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
+            String correlationId = request.getCorrelationId();
             String cid = (correlationId != null && !correlationId.isBlank())
                     ? correlationId
                     : UUID.randomUUID().toString();
             headers.set("X-Correlation-Id", cid);
 
-            HttpEntity<EmbedRequest> entity = new HttpEntity<>(req, headers);
+            HttpEntity<EmbedRequest> entity = new HttpEntity<>(request, headers);
 
             ResponseEntity<EmbedResponse> resp = restTemplate.exchange(
                     baseUrl + "/embed",
@@ -48,7 +57,7 @@ public class NlpServiceClient {
             );
 
             if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException(
+                throw new NlpServiceException(
                         "NLP embed failed: HTTP status " +
                                 (resp != null ? resp.getStatusCode() : "null response")
                 );
@@ -56,14 +65,14 @@ public class NlpServiceClient {
 
             EmbedResponse body = resp.getBody();
             if (body == null) {
-                throw new RuntimeException("NLP embed failed: empty response body");
+                throw new NlpServiceException("NLP embed failed: empty response body");
             }
 
             return body;
 
         } catch (RestClientException e) {
             log.error("NLP embed call failed", e);
-            throw new RuntimeException("NLP embed failed", e);
+            throw new NlpServiceException("NLP embed failed", e);
         }
     }
 

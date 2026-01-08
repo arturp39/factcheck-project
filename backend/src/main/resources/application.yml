@@ -3,16 +3,15 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/factcheck}
-    username: ${SPRING_DATASOURCE_USERNAME:factcheck}
-    password: ${SPRING_DATASOURCE_PASSWORD:factcheck}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/factcheck_backend}
+    username: ${SPRING_DATASOURCE_USERNAME:factcheck_backend}
+    password: ${SPRING_DATASOURCE_PASSWORD:factcheck_backend}
     driver-class-name: org.postgresql.Driver
 
   flyway:
     enabled: true
     locations: classpath:db/migration
     table: flyway_schema_history_backend
-    schemas: public
 
   jpa:
     hibernate:
@@ -39,14 +38,12 @@ vertex:
 weaviate:
   base-url: ${WEAVIATE_BASE_URL:http://localhost:8082}
   api-key: ${WEAVIATE_API_KEY:}
-  max-distance: ${WEAVIATE_MAX_DISTANCE:0.5}
+  max-distance: 0.5
 
 logging:
   level:
     root: INFO
     com.example.demo: DEBUG
-    com.example.demo.service.VertexAiService: DEBUG
-    com.example.demo.service.VertexApiClient: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%X{corrId}] %logger{36} - %msg%n"
 
@@ -55,12 +52,12 @@ nlp-service:
 
 app:
   claim:
-    max-length: ${APP_CLAIM_MAX_LENGTH:400}
+    max-length: 400
   search:
-    top-k: ${APP_SEARCH_TOP_K:5}
+    top-k: 5
   restclient:
-    connect-timeout-ms: ${APP_REST_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${APP_REST_READ_TIMEOUT_MS:30000}
+    connect-timeout-ms: 3000
+    read-timeout-ms: 30000
 
 management:
   endpoints:

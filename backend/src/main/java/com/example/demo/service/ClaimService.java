@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.Article;
+import com.example.demo.entity.ClaimFollowup;
 import com.example.demo.entity.ClaimLog;
 import com.example.demo.integration.nlp.NlpServiceClient;
+import com.example.demo.repository.ClaimFollowupRepository;
 import com.example.demo.repository.ClaimLogRepository;
 import com.example.demo.service.WeaviateClientService.EvidenceChunk;
 import lombok.extern.slf4j.Slf4j;
@@ -20,15 +22,18 @@ import java.util.stream.Collectors;
 public class ClaimService {
 
     private final ClaimLogRepository claimRepo;
+    private final ClaimFollowupRepository followupRepo;
     private final NlpServiceClient nlpServiceClient;
     private final WeaviateClientService weaviateClientService;
     private final int searchTopK;
 
     public ClaimService(ClaimLogRepository claimRepo,
+                        ClaimFollowupRepository followupRepo,
                         NlpServiceClient nlpServiceClient,
                         WeaviateClientService weaviateClientService,
                         @Value("${app.search.top-k:5}") int searchTopK) {
         this.claimRepo = claimRepo;
+        this.followupRepo = followupRepo;
         this.nlpServiceClient = nlpServiceClient;
         this.weaviateClientService = weaviateClientService;
         this.searchTopK = searchTopK;
@@ -52,7 +57,7 @@ public class ClaimService {
             log.info("Claim embedding length={}", claimVector.length);
 
             // Send the vector to Weaviate and parse the returned chunks
-            String graphqlResponse = weaviateClientService.searchByVector(claimVector, searchTopK);
+            String graphqlResponse = weaviateClientService.searchByVector(claimVector, searchTopK, cid);
             List<EvidenceChunk> chunks =
                     weaviateClientService.parseEvidenceChunks(graphqlResponse);
 
@@ -65,6 +70,10 @@ public class ClaimService {
                         a.setTitle(c.title());
                         a.setContent(c.content());
                         a.setSource(c.source());
+                        a.setPublishedAt(c.publishedAt());
+                        a.setMbfcBias(c.mbfcBias());
+                        a.setMbfcFactualReporting(c.mbfcFactualReporting());
+                        a.setMbfcCredibility(c.mbfcCredibility());
                         return a;
                     })
                     .collect(Collectors.toList());
@@ -102,6 +111,19 @@ public class ClaimService {
         ClaimLog logEntity = getClaim(claimId);
         logEntity.setBiasAnalysis(biasText);
         claimRepo.save(logEntity);
+    }
+
+    public ClaimFollowup storeFollowup(Long claimId, String question, String answer) {
+        ClaimLog logEntity = getClaim(claimId);
+        ClaimFollowup followup = new ClaimFollowup();
+        followup.setClaim(logEntity);
+        followup.setQuestion(question);
+        followup.setAnswer(answer);
+        return followupRepo.save(followup);
+    }
+
+    public List<ClaimFollowup> listFollowups(Long claimId) {
+        return followupRepo.findByClaimIdOrderByCreatedAtAsc(claimId);
     }
 
     public ClaimLog getClaim(Long id) {

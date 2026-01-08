@@ -1,5 +1,6 @@
 package com.example.demo.integration.nlp;
 
+import com.example.demo.exception.NlpServiceException;
 import com.example.demo.integration.nlp.dto.EmbedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,7 +67,7 @@ class NlpServiceClientTest {
                 .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> client.embed(List.of("hello"), "cid-1"))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(NlpServiceException.class)
                 .hasMessageContaining("empty response body");
     }
 
@@ -76,7 +77,7 @@ class NlpServiceClientTest {
                 .andRespond(withServerError());
 
         assertThatThrownBy(() -> client.embed(List.of("boom"), null))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(NlpServiceException.class)
                 .hasMessageContaining("NLP embed failed");
     }
 

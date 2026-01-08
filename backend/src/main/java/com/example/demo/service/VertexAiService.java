@@ -74,7 +74,7 @@ public class VertexAiService {
         String evidenceText = (evidence == null || evidence.isEmpty())
                 ? "(no evidence found)"
                 : evidence.stream()
-                .map(a -> a.getTitle() + " | " + a.getContent())
+                .map(this::formatEvidenceForFactcheck)
                 .collect(Collectors.joining("\n\n---\n\n"));
 
         return template
@@ -119,7 +119,7 @@ public class VertexAiService {
         String evidenceText = (evidence == null || evidence.isEmpty())
                 ? "(no evidence found)"
                 : evidence.stream()
-                .map(a -> a.getTitle() + " | " + a.getSource() + " | " + a.getContent())
+                .map(this::formatEvidenceForBias)
                 .collect(Collectors.joining("\n\n---\n\n"));
 
         return template
@@ -182,6 +182,43 @@ public class VertexAiService {
                 .replace("{{VERDICT}}", verdict == null ? "unclear" : verdict)
                 .replace("{{EXPLANATION}}", explanation == null ? "(no explanation stored)" : explanation)
                 .replace("{{FOLLOWUP_QUESTION}}", followupQuestion);
+    }
+
+    private String formatEvidenceForFactcheck(Article article) {
+        String mbfc = buildMbfcInfo(article, false);
+        if (mbfc == null) {
+            return article.getTitle() + " | " + article.getContent();
+        }
+        return article.getTitle() + " | " + mbfc + " | " + article.getContent();
+    }
+
+    private String formatEvidenceForBias(Article article) {
+        String mbfc = buildMbfcInfo(article, true);
+        if (mbfc == null) {
+            return article.getTitle() + " | " + article.getSource() + " | " + article.getContent();
+        }
+        return article.getTitle() + " | " + article.getSource() + " | " + mbfc + " | " + article.getContent();
+    }
+
+    private String buildMbfcInfo(Article article, boolean includeBias) {
+        List<String> parts = new java.util.ArrayList<>(3);
+        if (includeBias && isNotBlank(article.getMbfcBias())) {
+            parts.add("bias=" + article.getMbfcBias());
+        }
+        if (isNotBlank(article.getMbfcFactualReporting())) {
+            parts.add("factual_reporting=" + article.getMbfcFactualReporting());
+        }
+        if (isNotBlank(article.getMbfcCredibility())) {
+            parts.add("credibility=" + article.getMbfcCredibility());
+        }
+        if (parts.isEmpty()) {
+            return null;
+        }
+        return "MBFC(" + String.join(", ", parts) + ")";
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     // Shared helpers

@@ -58,16 +58,27 @@ public class WeaviateIndexingService {
             JsonNode classes = root.path("classes");
 
             boolean hasClass = false;
+            Set<String> existingProps = new HashSet<>();
             if (classes.isArray()) {
                 for (JsonNode c : classes) {
                     if (CLASS_NAME.equalsIgnoreCase(c.path("class").asText())) {
                         hasClass = true;
+                        JsonNode props = c.path("properties");
+                        if (props.isArray()) {
+                            for (JsonNode p : props) {
+                                String name = p.path("name").asText(null);
+                                if (name != null && !name.isBlank()) {
+                                    existingProps.add(name);
+                                }
+                            }
+                        }
                         break;
                     }
                 }
             }
 
             if (hasClass) {
+                ensureMbfcProperties(existingProps);
                 return;
             }
 
@@ -84,6 +95,9 @@ public class WeaviateIndexingService {
                         { "name": "articleUrl",   "dataType": ["text"] },
                         { "name": "articleTitle", "dataType": ["text"] },
                         { "name": "sourceName",   "dataType": ["text"] },
+                        { "name": "mbfcBias",     "dataType": ["text"] },
+                        { "name": "mbfcFactualReporting", "dataType": ["text"] },
+                        { "name": "mbfcCredibility", "dataType": ["text"] },
                         { "name": "publishedDate","dataType": ["date"] },
                         { "name": "chunkIndex",   "dataType": ["int"] }
                       ]
@@ -117,6 +131,46 @@ public class WeaviateIndexingService {
         }
     }
 
+    private void ensureMbfcProperties(Set<String> existingProps) throws Exception {
+        addPropertyIfMissing(existingProps, "mbfcBias", "text");
+        addPropertyIfMissing(existingProps, "mbfcFactualReporting", "text");
+        addPropertyIfMissing(existingProps, "mbfcCredibility", "text");
+    }
+
+    private void addPropertyIfMissing(Set<String> existingProps, String name, String dataType) throws Exception {
+        if (existingProps.contains(name)) {
+            return;
+        }
+        String body = String.format(
+                Locale.ROOT,
+                """
+                { "name": "%s", "dataType": ["%s"] }
+                """,
+                name,
+                dataType
+        );
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/v1/schema/" + CLASS_NAME + "/properties"))
+                .timeout(httpTimeout)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+            String b = resp.body() == null ? "" : resp.body();
+            if (b.toLowerCase(Locale.ROOT).contains("already exists")
+                    || b.toLowerCase(Locale.ROOT).contains("exists")) {
+                log.info("Schema property create raced; property already exists.");
+                return;
+            }
+            throw new WeaviateException("Schema property creation failed HTTP " + resp.statusCode()
+                    + " body=" + safeBody(b), null);
+        }
+        log.info("Added Weaviate property {} to {}", name, CLASS_NAME);
+    }
+
     public void indexArticleChunks(
             Article article,
             List<String> chunks,
@@ -140,6 +194,7 @@ public class WeaviateIndexingService {
             List<JsonNode> objects = new ArrayList<>(chunks.size());
 
             Instant published = article.getPublishedDate() != null ? article.getPublishedDate() : Instant.now();
+            MbfcSnapshot mbfcSnapshot = extractMbfcSnapshot(article);
 
             for (int i = 0; i < chunks.size(); i++) {
                 String chunkText = chunks.get(i);
@@ -157,6 +212,15 @@ public class WeaviateIndexingService {
                 props.put("articleUrl", nullToEmpty(article.getCanonicalUrl()));
                 props.put("articleTitle", nullToEmpty(article.getTitle()));
                 props.put("sourceName", article.getPublisher() != null ? nullToEmpty(article.getPublisher().getName()) : "");
+                if (mbfcSnapshot.bias() != null) {
+                    props.put("mbfcBias", mbfcSnapshot.bias());
+                }
+                if (mbfcSnapshot.factualReporting() != null) {
+                    props.put("mbfcFactualReporting", mbfcSnapshot.factualReporting());
+                }
+                if (mbfcSnapshot.credibility() != null) {
+                    props.put("mbfcCredibility", mbfcSnapshot.credibility());
+                }
                 props.put("publishedDate", published.toString()); // Use RFC3339 timestamp.
                 props.put("chunkIndex", i);
 
@@ -395,4 +459,34 @@ public class WeaviateIndexingService {
     private String buildChunkObjectId(Long articleId, int chunkIndex) {
         return UUID.nameUUIDFromBytes(("a:" + articleId + ":c:" + chunkIndex).getBytes(StandardCharsets.UTF_8)).toString();
     }
+
+    private MbfcSnapshot extractMbfcSnapshot(Article article) {
+        if (article == null) {
+            return new MbfcSnapshot(null, null, null);
+        }
+        try {
+            if (article.getPublisher() == null || article.getPublisher().getMbfcSource() == null) {
+                return new MbfcSnapshot(null, null, null);
+            }
+            var mbfc = article.getPublisher().getMbfcSource();
+            return new MbfcSnapshot(
+                    trimToNull(mbfc.getBias()),
+                    trimToNull(mbfc.getFactualReporting()),
+                    trimToNull(mbfc.getCredibility())
+            );
+        } catch (Exception e) {
+            log.debug("MBFC source not available for article id={}, skipping MBFC fields", article.getId(), e);
+            return new MbfcSnapshot(null, null, null);
+        }
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private record MbfcSnapshot(String bias, String factualReporting, String credibility) {}
 }

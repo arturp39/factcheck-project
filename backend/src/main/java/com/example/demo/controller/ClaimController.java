@@ -1,11 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.entity.Article;
+import com.example.demo.entity.ClaimFollowup;
 import com.example.demo.entity.ClaimLog;
-import com.example.demo.service.ClaimService;
-import com.example.demo.service.VertexAiService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.demo.service.ClaimWorkflowService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -13,58 +11,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @Controller
-@Slf4j
 public class ClaimController {
 
-    private final ClaimService claimService;
-    private final VertexAiService vertexService;
-    private final int claimMaxLength;
+    private final ClaimWorkflowService claimWorkflowService;
 
-    public ClaimController(ClaimService claimService,
-                           VertexAiService vertexService,
-                           @Value("${app.claim.max-length:400}") int claimMaxLength) {
-        this.claimService = claimService;
-        this.vertexService = vertexService;
-        this.claimMaxLength = claimMaxLength;
+    public ClaimController(ClaimWorkflowService claimWorkflowService) {
+        this.claimWorkflowService = claimWorkflowService;
     }
 
     @PostMapping("/verify")
     public String verify(@RequestParam String claim, Model model) {
-        String normalized = claim == null ? "" : claim.trim();
-
-        if (normalized.isEmpty()) {
-            model.addAttribute("error", "Claim must not be empty.");
+        try {
+            ClaimWorkflowService.VerifyResult result = claimWorkflowService.verify(claim, null);
+            applyBaseModel(
+                    model,
+                    result.claimId(),
+                    result.claim(),
+                    result.evidence(),
+                    result.verdict(),
+                    result.explanation(),
+                    null,
+                    List.of()
+            );
+            return "result";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("recentClaims", claimWorkflowService.listRecentClaims(10));
             return "index";
         }
-
-        if (normalized.length() > claimMaxLength) {
-            model.addAttribute("error", "Claim is too long. Please keep it under " + claimMaxLength + " characters.");
-            return "index";
-        }
-
-        log.info("verify called claimLength={}", normalized.length());
-
-        // Save claim log
-        ClaimLog saved = claimService.saveClaim(normalized);
-
-        // Search evidence in Weaviate
-        List<Article> evidence = claimService.searchEvidence(normalized);
-        log.info("verify evidenceSize={}", evidence.size());
-
-        // Main fact-check
-        String aiResponse = vertexService.askModel(normalized, evidence);
-
-        // Parse + store verdict and explanation
-        ClaimService.ParsedAnswer parsed = claimService.storeModelAnswer(saved.getId(), aiResponse);
-
-        // Model attributes for result page
-        model.addAttribute("claimId", saved.getId());
-        model.addAttribute("claim", normalized);
-        model.addAttribute("evidence", evidence);
-        model.addAttribute("verdict", parsed.verdict());
-        model.addAttribute("explanation", parsed.explanation());
-
-        return "result";
     }
 
     @PostMapping("/followup/{id}")
@@ -73,37 +47,37 @@ public class ClaimController {
                            Model model) {
 
         String normalizedQ = question == null ? "" : question.trim();
-        ClaimLog log = claimService.getClaim(claimId);
-
         if (normalizedQ.isEmpty()) {
+            ClaimWorkflowService.ClaimContext context =
+                    claimWorkflowService.loadClaimContext(claimId, null);
             model.addAttribute("error", "Follow-up question must not be empty.");
-        }
-
-        // fetch evidence again based on original claim
-        List<Article> evidence = claimService.searchEvidence(log.getClaimText());
-
-        // base context
-        model.addAttribute("claimId", claimId);
-        model.addAttribute("claim", log.getClaimText());
-        model.addAttribute("evidence", evidence);
-        model.addAttribute("verdict", log.getVerdict());
-        model.addAttribute("explanation", log.getExplanation());
-        model.addAttribute("biasAnalysis", log.getBiasAnalysis());
-
-        if (normalizedQ.isEmpty()) {
+            applyBaseModel(
+                    model,
+                    context.claimId(),
+                    context.claim(),
+                    context.evidence(),
+                    context.verdict(),
+                    context.explanation(),
+                    context.biasAnalysis(),
+                    claimWorkflowService.listFollowups(claimId)
+            );
             return "result";
         }
 
-        String answer = vertexService.answerFollowUp(
-                log.getClaimText(),
-                evidence,
-                log.getVerdict(),
-                log.getExplanation(),
-                normalizedQ
+        ClaimWorkflowService.FollowupResult result =
+                claimWorkflowService.followup(claimId, normalizedQ, null);
+        applyBaseModel(
+                model,
+                result.claimId(),
+                result.claim(),
+                result.evidence(),
+                result.verdict(),
+                result.explanation(),
+                result.biasAnalysis(),
+                claimWorkflowService.listFollowups(claimId)
         );
-
-        model.addAttribute("followupQuestion", normalizedQ);
-        model.addAttribute("followupAnswer", answer);
+        model.addAttribute("followupQuestion", result.question());
+        model.addAttribute("followupAnswer", result.answer());
 
         return "result";
     }
@@ -111,33 +85,62 @@ public class ClaimController {
     @PostMapping("/bias/{id}")
     public String analyzeBias(@PathVariable("id") Long claimId, Model model) {
 
-        ClaimLog log = claimService.getClaim(claimId);
-
-        // fetch evidence
-        List<Article> evidence = claimService.searchEvidence(log.getClaimText());
-
-        // call bias prompt
-        String biasText = vertexService.analyzeBias(
-                log.getClaimText(),
-                evidence,
-                log.getVerdict()
+        ClaimWorkflowService.BiasResult result = claimWorkflowService.bias(claimId, null);
+        applyBaseModel(
+                model,
+                result.claimId(),
+                result.claim(),
+                result.evidence(),
+                result.verdict(),
+                null,
+                result.biasAnalysis(),
+                claimWorkflowService.listFollowups(claimId)
         );
-
-        claimService.storeBiasAnalysis(claimId, biasText);
-
-        // rebuild model
-        model.addAttribute("claimId", claimId);
-        model.addAttribute("claim", log.getClaimText());
-        model.addAttribute("evidence", evidence);
-        model.addAttribute("verdict", log.getVerdict());
-        model.addAttribute("explanation", log.getExplanation());
-        model.addAttribute("biasAnalysis", biasText);
 
         return "result";
     }
 
+    @GetMapping("/history/{id}")
+    public String history(@PathVariable("id") Long claimId, Model model) {
+        ClaimWorkflowService.ConversationHistory history =
+                claimWorkflowService.loadConversationHistory(claimId, null);
+        ClaimWorkflowService.ClaimContext context = history.context();
+        applyBaseModel(
+                model,
+                context.claimId(),
+                context.claim(),
+                context.evidence(),
+                context.verdict(),
+                context.explanation(),
+                context.biasAnalysis(),
+                history.followups()
+        );
+        return "result";
+    }
+
     @GetMapping("/")
-    public String index() {
+    public String index(Model model) {
+        List<ClaimLog> recentClaims = claimWorkflowService.listRecentClaims(10);
+        model.addAttribute("recentClaims", recentClaims);
         return "index";
+    }
+
+    private void applyBaseModel(
+            Model model,
+            Long claimId,
+            String claim,
+            List<Article> evidence,
+            String verdict,
+            String explanation,
+            String biasAnalysis,
+            List<ClaimFollowup> followups
+    ) {
+        model.addAttribute("claimId", claimId);
+        model.addAttribute("claim", claim);
+        model.addAttribute("evidence", evidence);
+        model.addAttribute("verdict", verdict);
+        model.addAttribute("explanation", explanation);
+        model.addAttribute("biasAnalysis", biasAnalysis);
+        model.addAttribute("followups", followups == null ? List.of() : followups);
     }
 }

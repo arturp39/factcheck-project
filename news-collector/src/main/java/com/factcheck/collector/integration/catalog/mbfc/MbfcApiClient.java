@@ -70,7 +70,8 @@ public class MbfcApiClient {
             }
 
             String normalizedBody = stripBom(body);
-            return objectMapper.readValue(normalizedBody, new TypeReference<List<MbfcApiEntry>>() {});
+            return objectMapper.readValue(normalizedBody, new TypeReference<>() {
+            });
         } catch (HttpClientErrorException.TooManyRequests e) {
             String msg = "MBFC quota exceeded; skipping sync";
             log.warn(msg);

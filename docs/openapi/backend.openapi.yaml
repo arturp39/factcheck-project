@@ -50,8 +50,8 @@ paths:
                     explanation: "The Eiffel Tower is 330m tall including antennas."
                     evidence:
                       - title: "Eiffel Tower Facts"
-                        content: "Height 330 meters including antennas."
                         source: "wikipedia"
+                        snippet: "Height 330 meters including antennas."
         "400":
           $ref: '#/components/responses/BadRequest'
   /api/claims:
@@ -134,6 +134,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EvidenceResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /api/claims/{id}/history:
+    get:
+      tags: [claims]
+      summary: Get claim history (follow-ups + evidence)
+      operationId: getClaimHistory
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        "200":
+          description: Claim history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimHistoryResponse'
         "400":
           $ref: '#/components/responses/BadRequest'
   /api/claims/{id}/followup:
@@ -251,6 +268,19 @@ components:
           type: string
           format: date-time
       required: [title, content, source]
+    EvidenceItem:
+      type: object
+      properties:
+        title:
+          type: string
+        source:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        snippet:
+          type: string
+      required: [title, source]
     VerifyRequest:
       type: object
       required: [claim]
@@ -276,7 +306,7 @@ components:
         evidence:
           type: array
           items:
-            $ref: '#/components/schemas/Article'
+            $ref: '#/components/schemas/EvidenceItem'
       required: [correlationId, claimId, claim, verdict, explanation, evidence]
     ClaimSummary:
       type: object
@@ -334,6 +364,17 @@ components:
         modelAnswer:
           type: string
       required: [correlationId, claimId, claim, createdAt, verdict, explanation]
+    FollowupItem:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [question, answer, createdAt]
     EvidenceResponse:
       type: object
       properties:
@@ -347,8 +388,36 @@ components:
         evidence:
           type: array
           items:
-            $ref: '#/components/schemas/Article'
+            $ref: '#/components/schemas/EvidenceItem'
       required: [correlationId, claimId, claim, evidence]
+    ClaimHistoryResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        claimId:
+          type: integer
+          format: int64
+        claim:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        verdict:
+          type: string
+        explanation:
+          type: string
+        biasAnalysis:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceItem'
+        followups:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowupItem'
+      required: [correlationId, claimId, claim, createdAt, evidence, followups]
     FollowupRequest:
       type: object
       required: [question]
@@ -374,7 +443,7 @@ components:
         evidence:
           type: array
           items:
-            $ref: '#/components/schemas/Article'
+            $ref: '#/components/schemas/EvidenceItem'
         question:
           type: string
         answer:

@@ -16,4 +16,10 @@ public class Article {
     private String source;
 
     private LocalDateTime publishedAt;
+
+    private String mbfcBias;
+
+    private String mbfcFactualReporting;
+
+    private String mbfcCredibility;
 }

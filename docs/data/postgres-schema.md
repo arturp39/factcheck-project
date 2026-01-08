@@ -1,15 +1,13 @@
 # Postgres Schema (Operational)
 
-Database: `factcheck`
+Databases
+- `factcheck_backend` (backend service)
+- `factcheck_collector` (news collector service)
+
+Backend DB: `factcheck_backend`
 
 Schemas
-- `content` (news collector)
-
-Enums (content schema)
-- `content.source_kind`: `RSS|API`
-- `content.article_status`: `DISCOVERED|FETCHED|EXTRACTED|INDEXED|ERROR`
-- `content.ingestion_run_status`: `RUNNING|COMPLETED|PARTIAL|FAILED`
-- `content.ingestion_status`: `STARTED|PROCESSING|SUCCESS|PARTIAL|FAILED|SKIPPED`
+- `public` (default)
 
 Tables
 - `claim_log`
@@ -22,6 +20,26 @@ Tables
   - `bias_analysis` TEXT
   - Index: `idx_claim_log_created_at`
 
+- `claim_followup`
+  - `id` BIGSERIAL PK
+  - `claim_id` BIGINT FK -> `claim_log(id)` (ON DELETE CASCADE)
+  - `question` TEXT NOT NULL
+  - `answer` TEXT NOT NULL
+  - `created_at` TIMESTAMPTZ DEFAULT now()
+  - Index: `idx_claim_followup_claim_id_created_at`
+
+Collector DB: `factcheck_collector`
+
+Schemas
+- `content` (news collector)
+
+Enums (content schema)
+- `content.source_kind`: `RSS|API`
+- `content.article_status`: `DISCOVERED|FETCHED|EXTRACTED|INDEXED|ERROR`
+- `content.ingestion_run_status`: `RUNNING|COMPLETED|PARTIAL|FAILED`
+- `content.ingestion_status`: `STARTED|PROCESSING|SUCCESS|PARTIAL|FAILED|SKIPPED`
+
+Tables
 - `content.publishers`
   - `id` BIGSERIAL PK
   - `name` VARCHAR(255) NOT NULL (unique by lowercased name)

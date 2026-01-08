@@ -1,11 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.config.WeaviateProperties;
+import com.example.demo.exception.WeaviateException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -31,6 +33,10 @@ class WeaviateClientServiceTest {
                           "text": "Chunk1",
                           "articleTitle": "Title1",
                           "sourceName": "Source1",
+                          "publishedDate": "2024-01-02T03:04:05Z",
+                          "mbfcBias": "left",
+                          "mbfcFactualReporting": "mixed",
+                          "mbfcCredibility": "medium",
                           "_additional": { "distance": 0.3 }
                         },
                         {
@@ -53,6 +59,10 @@ class WeaviateClientServiceTest {
         assertThat(c.title()).isEqualTo("Title1");
         assertThat(c.content()).isEqualTo("Chunk1");
         assertThat(c.source()).isEqualTo("Source1");
+        assertThat(c.publishedAt()).isEqualTo(LocalDateTime.of(2024, 1, 2, 3, 4, 5));
+        assertThat(c.mbfcBias()).isEqualTo("left");
+        assertThat(c.mbfcFactualReporting()).isEqualTo("mixed");
+        assertThat(c.mbfcCredibility()).isEqualTo("medium");
     }
 
     @Test
@@ -73,7 +83,7 @@ class WeaviateClientServiceTest {
                 """;
 
         assertThatThrownBy(() -> service.parseEvidenceChunks(json))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(WeaviateException.class)
                 .hasMessageContaining("Weaviate GraphQL returned errors");
     }
 
@@ -120,6 +130,7 @@ class WeaviateClientServiceTest {
         assertThat(response).contains("ok");
         assertThat(requestBody.get()).contains("\"articleTitle\":\"Title\"");
         assertThat(requestBody.get()).contains("\"vector\"");
+        assertThat(server.capturedCorrelation()).isNotBlank();
 
         server.stop();
     }
@@ -138,7 +149,7 @@ class WeaviateClientServiceTest {
                 "Content",
                 "source",
                 new float[]{1f}
-        )).isInstanceOf(RuntimeException.class);
+        )).isInstanceOf(WeaviateException.class);
 
         assertThat(requestBody.get()).contains("\"Content\"");
         server.stop();
@@ -157,6 +168,7 @@ class WeaviateClientServiceTest {
 
         assertThat(response).contains("ok");
         assertThat(requestBody.get()).contains("\"sourceName\":\"manual\"");
+        assertThat(server.capturedCorrelation()).isNotBlank();
         server.stop();
     }
 
@@ -167,8 +179,8 @@ class WeaviateClientServiceTest {
         WeaviateClientService service = new WeaviateClientService(props);
 
         assertThatThrownBy(() -> service.insertArticleChunk("t", "c", "s", new float[]{}))
-                .isInstanceOf(RuntimeException.class)
-                .hasCauseInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(WeaviateException.class)
+                .hasMessageContaining("Vector must not be empty");
     }
 
     @Test
@@ -189,6 +201,7 @@ class WeaviateClientServiceTest {
         assertThat(requestBody.get()).contains("0.1");
         assertThat(requestBody.get()).contains("0.2");
         assertThat(server.capturedApiKey()).isEqualTo("secret");
+        assertThat(server.capturedCorrelation()).isNotBlank();
         server.stop();
     }
 
@@ -204,7 +217,7 @@ class WeaviateClientServiceTest {
         WeaviateClientService service = new WeaviateClientService(props);
 
         assertThatThrownBy(() -> service.searchByVector(new float[]{1.1f}, 1))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(WeaviateException.class)
                 .hasMessageContaining("Weaviate GraphQL HTTP 500");
 
         assertThat(requestBody.get()).contains("1.1");
@@ -215,6 +228,7 @@ class WeaviateClientServiceTest {
         private final com.sun.net.httpserver.HttpServer server;
         private final AtomicReference<String> capturedBody;
         private final AtomicReference<String> capturedApiKey = new AtomicReference<>();
+        private final AtomicReference<String> capturedCorrelation = new AtomicReference<>();
 
         TestServer(String path, int status, String body, AtomicReference<String> capturedBody) throws IOException {
             this.capturedBody = capturedBody;
@@ -223,6 +237,7 @@ class WeaviateClientServiceTest {
                 byte[] bytes = exchange.getRequestBody().readAllBytes();
                 capturedBody.set(new String(bytes, StandardCharsets.UTF_8));
                 capturedApiKey.set(exchange.getRequestHeaders().getFirst("X-API-KEY"));
+                capturedCorrelation.set(exchange.getRequestHeaders().getFirst(WeaviateClientService.CORRELATION_HEADER));
                 exchange.sendResponseHeaders(status, body.getBytes(StandardCharsets.UTF_8).length);
                 exchange.getResponseBody().write(body.getBytes(StandardCharsets.UTF_8));
                 exchange.close();
@@ -236,6 +251,10 @@ class WeaviateClientServiceTest {
 
         String capturedApiKey() {
             return capturedApiKey.get();
+        }
+
+        String capturedCorrelation() {
+            return capturedCorrelation.get();
         }
 
         void stop() {

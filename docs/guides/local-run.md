@@ -13,7 +13,7 @@ Repo layout (this monorepo)
 Steps
 1) Copy env template: `cp infra/.env.example infra/.env`.
 2) Build & start: `cd infra` then `docker compose up --build`.
-3) Wait for health checks: Postgres, Weaviate, NLP, backend, collector.
+3) Wait for health checks: Postgres (backend + collector), Weaviate, NLP, backend, collector.
 4) Test services:
    - Backend health: `curl -s http://localhost:8080/actuator/health`
    - Collector health: `curl -s http://localhost:8081/actuator/health`
@@ -23,5 +23,5 @@ Shutdown
 - From `infra/`: `docker compose down` (add `-v` to drop volumes).
 
 Common options
-- Override ports via `infra/.env` (`BACKEND_PORT`, `COLLECTOR_PORT`, `NLP_PORT`, `WEAVIATE_PORT`, `POSTGRES_PORT`).
+- Override ports via `infra/.env` (`BACKEND_PORT`, `COLLECTOR_PORT`, `NLP_PORT`, `WEAVIATE_PORT`, `BACKEND_POSTGRES_PORT`, `COLLECTOR_POSTGRES_PORT`).
 - Use fake embeddings for offline dev: `NLP_USE_FAKE_EMBEDDINGS=true` (default in template).

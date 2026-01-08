@@ -45,9 +45,6 @@ public class IngestionTaskPublisher implements TaskPublisher {
     @Value("${cloud-tasks.service-account-email:}")
     private String serviceAccountEmail;
 
-    /**
-     * Optional override for local runs; Cloud Run uses metadata tokens.
-     */
     @Value("${cloud-tasks.access-token:}")
     private String accessTokenOverride;
 
@@ -85,7 +82,6 @@ public class IngestionTaskPublisher implements TaskPublisher {
                 headers.put("X-Correlation-Id", taskRequest.correlationId());
             }
 
-            // Use OIDC when a service account is configured.
             if (serviceAccountEmail != null && !serviceAccountEmail.isBlank()) {
                 var oidc = httpRequest.putObject("oidcToken");
                 oidc.put("serviceAccountEmail", serviceAccountEmail);

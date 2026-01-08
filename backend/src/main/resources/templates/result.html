@@ -108,22 +108,26 @@
         </div>
     </section>
 
-    <!-- Optional: follow-up Q&A bubble -->
-    <section th:if="${followupQuestion}" class="chat-block">
-        <div class="chat-label">You (follow-up)</div>
-        <div class="chat-bubble chat-bubble-user">
-            <p th:text="${followupQuestion}">Follow-up question</p>
+    <!-- Conversation history -->
+    <div th:if="${!#lists.isEmpty(followups)}">
+        <h3 class="section-subtitle">Conversation history</h3>
+        <div th:each="f : ${followups}">
+            <section class="chat-block">
+                <div class="chat-label">You (follow-up)</div>
+                <div class="chat-bubble chat-bubble-user">
+                    <p th:text="${f.question}">Follow-up question</p>
+                </div>
+            </section>
+            <section class="chat-block">
+                <div class="chat-label">Assistant</div>
+                <div class="chat-bubble chat-bubble-assistant">
+                    <p class="assistant-text" th:text="${f.answer}">
+                        Follow-up answer text
+                    </p>
+                </div>
+            </section>
         </div>
-    </section>
-
-    <section th:if="${followupAnswer}" class="chat-block">
-        <div class="chat-label">Assistant</div>
-        <div class="chat-bubble chat-bubble-assistant">
-            <p class="assistant-text" th:text="${followupAnswer}">
-                Follow-up answer text
-            </p>
-        </div>
-    </section>
+    </div>
 
     <!-- Evidence list -->
     <section class="card">
@@ -138,15 +142,34 @@
                 <li th:each="a : ${evidence}" class="evidence-item">
                     <div class="evidence-title" th:text="${a.title}">Article title</div>
                     <div class="evidence-source" th:text="${a.source}">Source name</div>
-                    <p class="evidence-text" th:text="${a.content}">
+                    <p class="evidence-text evidence-text-collapsed" th:text="${a.content}">
                         Article content snippet
                     </p>
+                    <button type="button" class="evidence-toggle" aria-expanded="false">Show more</button>
                 </li>
             </ul>
         </div>
     </section>
 
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const items = document.querySelectorAll('.evidence-item');
+        items.forEach((item) => {
+            const text = item.querySelector('.evidence-text');
+            const toggle = item.querySelector('.evidence-toggle');
+            if (!text || !toggle) return;
+
+            toggle.addEventListener('click', () => {
+                const expanded = item.classList.toggle('is-expanded');
+                text.classList.toggle('evidence-text-collapsed', !expanded);
+                toggle.textContent = expanded ? 'Show less' : 'Show more';
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            });
+        });
+    });
+</script>
 
 </body>
 </html>

@@ -61,7 +61,8 @@ public class GlobalExceptionHandler {
         String accept = request.getHeader("Accept");
         String path = request.getRequestURI();
         boolean wantsHtml = accept != null && accept.contains("text/html");
-        boolean isViewRoute = path != null && (path.equals("/") || path.startsWith("/verify") || path.startsWith("/followup") || path.startsWith("/bias"));
+        boolean isViewRoute = path != null && (path.equals("/") || path.startsWith("/verify") || path.startsWith("/followup")
+                || path.startsWith("/bias") || path.startsWith("/history"));
         return wantsHtml || isViewRoute;
     }
 }

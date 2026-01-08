@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.Article;
+import com.example.demo.entity.ClaimFollowup;
 import com.example.demo.entity.ClaimLog;
 import com.example.demo.integration.nlp.NlpServiceClient;
+import com.example.demo.repository.ClaimFollowupRepository;
 import com.example.demo.repository.ClaimLogRepository;
 import com.example.demo.service.WeaviateClientService.EvidenceChunk;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,9 @@ class ClaimServiceTest {
     private ClaimLogRepository claimLogRepository;
 
     @Mock
+    private ClaimFollowupRepository claimFollowupRepository;
+
+    @Mock
     private NlpServiceClient nlpServiceClient;
 
     @Mock
@@ -42,7 +47,13 @@ class ClaimServiceTest {
         existingLog.setId(1L);
         existingLog.setClaimText("The Earth is flat");
 
-        claimService = new ClaimService(claimLogRepository, nlpServiceClient, weaviateClientService, 5);
+        claimService = new ClaimService(
+                claimLogRepository,
+                claimFollowupRepository,
+                nlpServiceClient,
+                weaviateClientService,
+                5
+        );
     }
 
     @Test
@@ -52,12 +63,12 @@ class ClaimServiceTest {
         when(nlpServiceClient.embedSingleToVector(eq(claim), anyString()))
                 .thenReturn(new float[]{0.1f, 0.2f, 0.3f});
 
-        when(weaviateClientService.searchByVector(any(float[].class), eq(5)))
+        when(weaviateClientService.searchByVector(any(float[].class), eq(5), anyString()))
                 .thenReturn("{}");
 
         List<EvidenceChunk> chunks = List.of(
-                new EvidenceChunk("Title 1", "Content 1", "Source 1"),
-                new EvidenceChunk("Title 2", "Content 2", "Source 2")
+                new EvidenceChunk("Title 1", "Content 1", "Source 1", null, null, null, null),
+                new EvidenceChunk("Title 2", "Content 2", "Source 2", null, null, null, null)
         );
         when(weaviateClientService.parseEvidenceChunks(anyString()))
                 .thenReturn(chunks);
@@ -163,6 +174,22 @@ class ClaimServiceTest {
 
         ClaimLog saved = captor.getValue();
         assertThat(saved.getBiasAnalysis()).isEqualTo(biasText);
+    }
+
+    @Test
+    void storeFollowup_persistsQuestionAndAnswer() {
+        when(claimLogRepository.findById(1L)).thenReturn(Optional.of(existingLog));
+        ClaimFollowup saved = new ClaimFollowup();
+        saved.setId(5L);
+        when(claimFollowupRepository.save(any(ClaimFollowup.class))).thenReturn(saved);
+
+        ClaimFollowup result = claimService.storeFollowup(1L, "q?", "a!");
+
+        assertThat(result.getId()).isEqualTo(5L);
+        ArgumentCaptor<ClaimFollowup> captor = ArgumentCaptor.forClass(ClaimFollowup.class);
+        verify(claimFollowupRepository).save(captor.capture());
+        assertThat(captor.getValue().getQuestion()).isEqualTo("q?");
+        assertThat(captor.getValue().getAnswer()).isEqualTo("a!");
     }
 
     @Test

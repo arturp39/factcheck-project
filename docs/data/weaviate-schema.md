@@ -4,6 +4,9 @@ Class: `ArticleChunk`
 - `text` (string): chunk content.
 - `articleTitle` (string): originating article title.
 - `sourceName` (string): human-readable source.
+- `mbfcBias` (string): MBFC bias label (if mapped).
+- `mbfcFactualReporting` (string): MBFC factual reporting label (if mapped).
+- `mbfcCredibility` (string): MBFC credibility label (if mapped).
 - `articleId` (int): upstream DB article ID (collector).
 - `articleUrl` (string): URL to original article.
 - `publishedDate` (date): ISO timestamp of publication.

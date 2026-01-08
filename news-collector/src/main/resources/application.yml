@@ -44,26 +44,26 @@ nlp-service:
   url: ${NLP_SERVICE_URL:http://localhost:8000}
 
 ingestion:
-  max-parallel-sources: ${INGESTION_MAX_PARALLEL_SOURCES:1}
-  interval-ms: ${INGESTION_INTERVAL_MS:600000}
-  run-timeout: ${INGESTION_RUN_TIMEOUT:PT6H}
-  block-threshold: ${INGESTION_BLOCK_THRESHOLD:2}
-  block-duration: ${INGESTION_BLOCK_DURATION:PT24H}
+  max-parallel-sources: 1
+  interval-ms: 600000
+  run-timeout: PT6H
+  block-threshold: 2
+  block-duration: PT24H
   task-lease-seconds: 1800
 
 crawler:
-  user-agent: ${CRAWLER_USER_AGENT:FactCheckCollector/1.0 (+https://example.com)}
+  user-agent: FactCheckCollector/1.0 (+https://example.com)
 
 search:
-  embedding-dimension: ${SEARCH_EMBEDDING_DIMENSION:768}
+  embedding-dimension: 768
 
 newsapi:
   api-key: ${NEWSAPI_API_KEY:}
-  base-url: ${NEWSAPI_BASE_URL:https://newsapi.org/v2}
-  max-sources-per-request: ${NEWSAPI_MAX_SOURCES_PER_REQUEST:20}
-  max-pages-per-batch: ${NEWSAPI_MAX_PAGES_PER_BATCH:5}
-  max-requests-per-ingestion: ${NEWSAPI_MAX_REQUESTS_PER_INGESTION:100}
-  sort-by: ${NEWSAPI_SORT_BY:publishedAt}
+  base-url: https://newsapi.org/v2
+  max-sources-per-request: 20
+  max-pages-per-batch: 5
+  max-requests-per-ingestion: 100
+  sort-by: publishedAt
 
 cloud-tasks:
   project-id: ${GCP_PROJECT:}

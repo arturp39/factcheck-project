@@ -271,6 +271,27 @@
     margin: 0;
 }
 
+.evidence-text-collapsed {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+}
+
+.evidence-toggle {
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: #1967d2;
+    font-size: 12px;
+    padding: 0;
+    cursor: pointer;
+}
+
+.evidence-toggle:hover {
+    text-decoration: underline;
+}
+
 /* Misc */
 
 .hint-list {
@@ -290,4 +311,45 @@
     border-radius: 6px;
     font-size: 12px;
     overflow-x: auto;
+}
+
+/* History list */
+
+.history-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.history-item + .history-item {
+    margin-top: 8px;
+}
+
+.history-link {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
+    padding: 8px 10px;
+    border: 1px solid #e0e3e7;
+    border-radius: 6px;
+    background-color: #ffffff;
+}
+
+.history-link:hover {
+    border-color: #c6dafc;
+    background-color: #f1f6ff;
+}
+
+.history-claim {
+    font-size: 13px;
+    flex: 1;
+}
+
+.history-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #5f6368;
+    white-space: nowrap;
 }

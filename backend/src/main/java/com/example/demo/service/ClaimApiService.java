@@ -1,44 +1,44 @@
 package com.example.demo.service;
 
-import com.example.demo.api.ClaimApiModels.*;
+import com.example.demo.dto.BiasResponse;
+import com.example.demo.dto.ClaimHistoryResponse;
+import com.example.demo.dto.ClaimResponse;
+import com.example.demo.dto.ClaimSummary;
+import com.example.demo.dto.ClaimsPageResponse;
+import com.example.demo.dto.EvidenceItem;
+import com.example.demo.dto.EvidenceResponse;
+import com.example.demo.dto.FollowupItem;
+import com.example.demo.dto.FollowupResponse;
+import com.example.demo.dto.VerifyResponse;
 import com.example.demo.entity.Article;
+import com.example.demo.entity.ClaimFollowup;
 import com.example.demo.entity.ClaimLog;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ClaimApiService {
 
     private final ClaimService claimService;
-    private final VertexAiService vertexAiService;
-    @Value("${app.claim.max-length:400}")
-    private int claimMaxLength;
+    private final ClaimWorkflowService claimWorkflowService;
+
+    private static final int EVIDENCE_SNIPPET_LIMIT = 400;
 
     public VerifyResponse verify(String claim, String correlationId) {
-        String cid = useCorrelationId(correlationId);
-        String normalized = normalize(claim);
-        validateClaim(normalized);
-
-        ClaimLog saved = claimService.saveClaim(normalized);
-        List<Article> evidence = claimService.searchEvidence(normalized, cid);
-        String aiResponse = vertexAiService.askModel(normalized, evidence);
-        ClaimService.ParsedAnswer parsed = claimService.storeModelAnswer(saved.getId(), aiResponse);
+        ClaimWorkflowService.VerifyResult result = claimWorkflowService.verify(claim, correlationId);
 
         return new VerifyResponse(
-                cid,
-                saved.getId(),
-                normalized,
-                parsed.verdict(),
-                parsed.explanation(),
-                evidence
+                result.correlationId(),
+                result.claimId(),
+                result.claim(),
+                result.verdict(),
+                result.explanation(),
+                toEvidenceItems(result.evidence())
         );
     }
 
@@ -88,89 +88,108 @@ public class ClaimApiService {
     }
 
     public EvidenceResponse getEvidence(Long claimId, String correlationId) {
-        String cid = useCorrelationId(correlationId);
-        ClaimLog log = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(log.getClaimText(), cid);
+        ClaimWorkflowService.ClaimContext context = claimWorkflowService.loadClaimContext(claimId, correlationId);
         return new EvidenceResponse(
-                cid,
+                context.correlationId(),
                 claimId,
-                log.getClaimText(),
-                evidence
+                context.claim(),
+                toEvidenceItems(context.evidence())
+        );
+    }
+
+    public ClaimHistoryResponse getHistory(Long claimId, String correlationId) {
+        ClaimWorkflowService.ConversationHistory history =
+                claimWorkflowService.loadConversationHistory(claimId, correlationId);
+        ClaimWorkflowService.ClaimContext context = history.context();
+
+        return new ClaimHistoryResponse(
+                context.correlationId(),
+                context.claimId(),
+                context.claim(),
+                context.createdAt(),
+                context.verdict(),
+                context.explanation(),
+                context.biasAnalysis(),
+                toEvidenceItems(context.evidence()),
+                toFollowupItems(history.followups())
         );
     }
 
     public FollowupResponse followup(Long claimId, String question, String correlationId) {
-        String cid = useCorrelationId(correlationId);
-        String normalizedQ = normalize(question);
-        if (normalizedQ.isEmpty()) {
-            throw new IllegalArgumentException("Follow-up question must not be empty.");
-        }
-
-        ClaimLog log = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(log.getClaimText(), cid);
-
-        String answer = vertexAiService.answerFollowUp(
-                log.getClaimText(),
-                evidence,
-                log.getVerdict(),
-                log.getExplanation(),
-                normalizedQ
-        );
+        ClaimWorkflowService.FollowupResult result =
+                claimWorkflowService.followup(claimId, question, correlationId);
 
         return new FollowupResponse(
-                cid,
-                claimId,
-                log.getClaimText(),
-                log.getVerdict(),
-                log.getExplanation(),
-                log.getBiasAnalysis(),
-                evidence,
-                normalizedQ,
-                answer
+                result.correlationId(),
+                result.claimId(),
+                result.claim(),
+                result.verdict(),
+                result.explanation(),
+                result.biasAnalysis(),
+                toEvidenceItems(result.evidence()),
+                result.question(),
+                result.answer()
         );
     }
 
     public BiasResponse bias(Long claimId, String correlationId) {
-        String cid = useCorrelationId(correlationId);
-
-        ClaimLog log = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(log.getClaimText(), cid);
-
-        String biasText = vertexAiService.analyzeBias(
-                log.getClaimText(),
-                evidence,
-                log.getVerdict()
-        );
-
-        claimService.storeBiasAnalysis(claimId, biasText);
+        ClaimWorkflowService.BiasResult result = claimWorkflowService.bias(claimId, correlationId);
 
         return new BiasResponse(
-                cid,
-                claimId,
-                log.getClaimText(),
-                log.getVerdict(),
-                biasText
+                result.correlationId(),
+                result.claimId(),
+                result.claim(),
+                result.verdict(),
+                result.biasAnalysis()
         );
-    }
-
-    private void validateClaim(String normalized) {
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("Claim must not be empty.");
-        }
-        if (normalized.length() > claimMaxLength) {
-            throw new IllegalArgumentException(
-                    "Claim is too long. Please keep it under " + claimMaxLength + " characters."
-            );
-        }
-    }
-
-    private String normalize(String input) {
-        return input == null ? "" : input.trim();
     }
 
     private String useCorrelationId(String correlationId) {
         return (correlationId != null && !correlationId.isBlank())
                 ? correlationId
                 : UUID.randomUUID().toString();
+    }
+
+    private List<EvidenceItem> toEvidenceItems(List<Article> evidence) {
+        return evidence.stream()
+                .map(this::toEvidenceItem)
+                .toList();
+    }
+
+    private List<FollowupItem> toFollowupItems(List<ClaimFollowup> followups) {
+        if (followups == null || followups.isEmpty()) {
+            return List.of();
+        }
+        return followups.stream()
+                .map(f -> new FollowupItem(
+                        f.getQuestion(),
+                        f.getAnswer(),
+                        f.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    private EvidenceItem toEvidenceItem(Article article) {
+        return new EvidenceItem(
+                article.getTitle(),
+                article.getSource(),
+                article.getPublishedAt(),
+                buildSnippet(article.getContent())
+        );
+    }
+
+    private String buildSnippet(String content) {
+        if (content == null) {
+            return null;
+        }
+        String trimmed = content.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() <= EVIDENCE_SNIPPET_LIMIT) {
+            return trimmed;
+        }
+        int limit = Math.max(0, EVIDENCE_SNIPPET_LIMIT - 3);
+        return trimmed.substring(0, limit) + "...";
     }
 }

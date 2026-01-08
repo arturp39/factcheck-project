@@ -1,7 +1,14 @@
 package com.example.demo.controller;
 
-import com.example.demo.api.ClaimApiModels.*;
-import com.example.demo.entity.Article;
+import com.example.demo.dto.BiasResponse;
+import com.example.demo.dto.ClaimSummary;
+import com.example.demo.dto.ClaimsPageResponse;
+import com.example.demo.dto.EvidenceItem;
+import com.example.demo.dto.EvidenceResponse;
+import com.example.demo.dto.FollowupRequest;
+import com.example.demo.dto.FollowupResponse;
+import com.example.demo.dto.VerifyRequest;
+import com.example.demo.dto.VerifyResponse;
 import com.example.demo.service.ClaimApiService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +36,7 @@ class ClaimApiControllerTest {
     void setUp() {
         mocks = MockitoAnnotations.openMocks(this);
         claimApiService = mock(ClaimApiService.class);
-        controller = new ClaimApiController(claimApiService, 400);
+        controller = new ClaimApiController(claimApiService);
     }
 
     @AfterEach
@@ -42,10 +49,12 @@ class ClaimApiControllerTest {
     void verifyHappyPathReturnsJsonBody() {
         MDC.put("corrId", "cid-1");
 
-        Article article = new Article();
-        article.setTitle("Evidence title");
-        article.setContent("Evidence content");
-        article.setSource("Evidence source");
+        EvidenceItem evidence = new EvidenceItem(
+                "Evidence title",
+                "Evidence source",
+                null,
+                "Evidence snippet"
+        );
 
         VerifyResponse response = new VerifyResponse(
                 "cid-1",
@@ -53,7 +62,7 @@ class ClaimApiControllerTest {
                 "The sky is blue",
                 "true",
                 "because",
-                List.of(article)
+                List.of(evidence)
         );
 
         when(claimApiService.verify("The sky is blue", "cid-1")).thenReturn(response);
@@ -94,13 +103,9 @@ class ClaimApiControllerTest {
     void getEvidenceReturnsEvidenceForStoredClaim() {
         MDC.put("corrId", "cid-ev");
 
-        Article article = new Article();
-        article.setTitle("t");
-        article.setContent("c");
-        article.setSource("s");
-
-        EvidenceResponse evidence = new EvidenceResponse("cid-ev", 10L, "claim text", List.of(article));
-        when(claimApiService.getEvidence(10L, "cid-ev")).thenReturn(evidence);
+        EvidenceItem evidence = new EvidenceItem("t", "s", null, "c");
+        EvidenceResponse response = new EvidenceResponse("cid-ev", 10L, "claim text", List.of(evidence));
+        when(claimApiService.getEvidence(10L, "cid-ev")).thenReturn(response);
 
         var resp = controller.getEvidence(10L);
 
@@ -127,10 +132,7 @@ class ClaimApiControllerTest {
     void followupHappyPathReturnsAnswer() {
         MDC.put("corrId", "cid-2");
 
-        Article article = new Article();
-        article.setTitle("t");
-        article.setContent("c");
-        article.setSource("s");
+        EvidenceItem evidence = new EvidenceItem("t", "s", null, "c");
 
         FollowupResponse response = new FollowupResponse(
                 "cid-2",
@@ -139,7 +141,7 @@ class ClaimApiControllerTest {
                 "mixed",
                 "expl",
                 null,
-                List.of(article),
+                List.of(evidence),
                 "why?",
                 "answer here"
         );

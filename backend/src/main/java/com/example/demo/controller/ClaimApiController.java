@@ -1,9 +1,16 @@
 package com.example.demo.controller;
 
-import com.example.demo.api.ClaimApiModels.*;
+import com.example.demo.dto.BiasResponse;
+import com.example.demo.dto.ClaimHistoryResponse;
+import com.example.demo.dto.ClaimResponse;
+import com.example.demo.dto.ClaimsPageResponse;
+import com.example.demo.dto.EvidenceResponse;
+import com.example.demo.dto.FollowupRequest;
+import com.example.demo.dto.FollowupResponse;
+import com.example.demo.dto.VerifyRequest;
+import com.example.demo.dto.VerifyResponse;
 import com.example.demo.service.ClaimApiService;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,8 +23,7 @@ public class ClaimApiController {
     private final ClaimApiService claimApiService;
 
     public ClaimApiController(
-            ClaimApiService claimApiService,
-            @Value("${app.claim.max-length:400}") int claimMaxLength
+            ClaimApiService claimApiService
     ) {
         this.claimApiService = claimApiService;
     }
@@ -48,6 +54,12 @@ public class ClaimApiController {
     public ResponseEntity<EvidenceResponse> getEvidence(@PathVariable("id") Long claimId) {
         String correlationId = getCorrelationId();
         return ResponseEntity.ok(claimApiService.getEvidence(claimId, correlationId));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ClaimHistoryResponse> getHistory(@PathVariable("id") Long claimId) {
+        String correlationId = getCorrelationId();
+        return ResponseEntity.ok(claimApiService.getHistory(claimId, correlationId));
     }
 
     @PostMapping("/{id}/followup")

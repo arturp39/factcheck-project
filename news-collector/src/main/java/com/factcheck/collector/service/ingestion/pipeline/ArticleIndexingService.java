@@ -22,23 +22,33 @@ public class ArticleIndexingService {
 
     public boolean index(Article article, String fullText, String correlationId) {
         try {
-            var chunks = articleProcessingService.createChunks(article, fullText, correlationId);
+            Article resolved = resolveForIndexing(article);
+            var chunks = articleProcessingService.createChunks(resolved, fullText, correlationId);
             var embeddings = embeddingService.embedChunks(chunks, correlationId);
-            weaviateIndexingService.indexArticleChunks(article, chunks, embeddings, correlationId);
+            weaviateIndexingService.indexArticleChunks(resolved, chunks, embeddings, correlationId);
 
-            article.setChunkCount(chunks.size());
-            article.setWeaviateIndexed(true);
-            article.setStatus(ArticleStatus.INDEXED);
-            articleRepository.save(article);
+            resolved.setChunkCount(chunks.size());
+            resolved.setWeaviateIndexed(true);
+            resolved.setStatus(ArticleStatus.INDEXED);
+            articleRepository.save(resolved);
             return true;
 
         } catch (Exception e) {
-            log.error("Processing/indexing failed for article id={}", article.getId(), e);
-            article.setWeaviateIndexed(false);
-            article.setStatus(ArticleStatus.ERROR);
-            article.setExtractionError("Indexing failed: " + e.getMessage());
-            articleRepository.save(article);
+            log.error("Processing/indexing failed for article id={}", article != null ? article.getId() : null, e);
+            if (article != null) {
+                article.setWeaviateIndexed(false);
+                article.setStatus(ArticleStatus.ERROR);
+                article.setExtractionError("Indexing failed: " + e.getMessage());
+                articleRepository.save(article);
+            }
             return false;
         }
+    }
+
+    private Article resolveForIndexing(Article article) {
+        if (article == null || article.getId() == null) {
+            return article;
+        }
+        return articleRepository.findByIdWithPublisherAndMbfc(article.getId()).orElse(article);
     }
 }

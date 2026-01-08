@@ -1,9 +1,12 @@
 package com.factcheck.collector.service.ingestion;
 
+import com.factcheck.collector.domain.entity.IngestionLog;
 import com.factcheck.collector.domain.entity.IngestionRun;
 import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.domain.enums.IngestionRunStatus;
+import com.factcheck.collector.domain.enums.IngestionStatus;
 import com.factcheck.collector.dto.IngestionRunStartResponse;
+import com.factcheck.collector.exception.IngestionRunAlreadyRunningException;
 import com.factcheck.collector.integration.tasks.TaskPublisher;
 import com.factcheck.collector.repository.IngestionLogRepository;
 import com.factcheck.collector.repository.IngestionRunRepository;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -21,9 +25,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -115,5 +122,95 @@ class IngestionJobRunnerTest {
         assertThat(response.tasksEnqueued()).isEqualTo(2);
 
         verify(taskPublisher, times(2)).enqueueIngestionTask(any());
+    }
+
+    @Test
+    void startRunThrowsWhenAnotherRunAlreadyRunning() {
+        when(ingestionRunRepository.findByStatusAndStartedAtBefore(any(), any(Instant.class)))
+                .thenReturn(List.of());
+        when(ingestionRunRepository.save(any(IngestionRun.class)))
+                .thenThrow(new DataIntegrityViolationException("unique constraint"));
+
+        assertThatThrownBy(() -> ingestionJobRunner.startRun(UUID.randomUUID().toString()))
+                .isInstanceOf(IngestionRunAlreadyRunningException.class);
+    }
+
+    @Test
+    void startRunMarksNotEnqueuedLogsFailedOnEnqueueException() {
+        when(ingestionRunRepository.findByStatusAndStartedAtBefore(any(), any(Instant.class)))
+                .thenReturn(List.of());
+
+        SourceEndpoint first = SourceEndpoint.builder().id(10L).build();
+        SourceEndpoint second = SourceEndpoint.builder().id(20L).build();
+        when(sourceEndpointRepository.findEligibleForIngestion(any(Instant.class)))
+                .thenReturn(List.of(first, second));
+
+        when(ingestionRunRepository.save(any(IngestionRun.class)))
+                .thenAnswer(inv -> {
+                    IngestionRun run = inv.getArgument(0);
+                    if (run.getId() == null) run.setId(5L);
+                    return run;
+                });
+
+        IngestionLog secondLog = IngestionLog.builder()
+                .id(200L)
+                .run(IngestionRun.builder().id(5L).status(IngestionRunStatus.RUNNING).build())
+                .sourceEndpoint(second)
+                .status(IngestionStatus.STARTED)
+                .build();
+
+        when(ingestionLogRepository.findByRunIdAndSourceEndpointId(5L, 20L)).thenReturn(Optional.of(secondLog));
+        when(ingestionLogRepository.save(any(IngestionLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        doNothing().when(taskPublisher).enqueueIngestionTask(argThat(req -> req.sourceEndpointId().equals(10L)));
+        doThrow(new RuntimeException("broker down"))
+                .when(taskPublisher).enqueueIngestionTask(argThat(req -> req.sourceEndpointId().equals(20L)));
+
+        IngestionRunStartResponse response = ingestionJobRunner.startRun(UUID.randomUUID().toString());
+
+        assertThat(response.runId()).isEqualTo(5L);
+        assertThat(response.tasksEnqueued()).isEqualTo(1);
+        assertThat(response.status()).isEqualTo(IngestionRunStatus.RUNNING.name());
+
+        ArgumentCaptor<IngestionLog> logCaptor = ArgumentCaptor.forClass(IngestionLog.class);
+        verify(ingestionLogRepository, atLeastOnce()).save(logCaptor.capture());
+        IngestionLog saved = logCaptor.getAllValues().getLast();
+        assertThat(saved.getStatus()).isEqualTo(IngestionStatus.FAILED);
+        assertThat(saved.getErrorDetails()).contains("Enqueue failed before dispatch");
+        assertThat(saved.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void startRunFailsRunWhenZeroTasksEnqueued() {
+        when(ingestionRunRepository.findByStatusAndStartedAtBefore(any(), any(Instant.class)))
+                .thenReturn(List.of());
+
+        SourceEndpoint only = SourceEndpoint.builder().id(10L).build();
+        when(sourceEndpointRepository.findEligibleForIngestion(any(Instant.class)))
+                .thenReturn(List.of(only));
+
+        when(ingestionRunRepository.save(any(IngestionRun.class)))
+                .thenAnswer(inv -> {
+                    IngestionRun run = inv.getArgument(0);
+                    if (run.getId() == null) run.setId(5L);
+                    return run;
+                });
+
+        IngestionRun managed = IngestionRun.builder().id(5L).status(IngestionRunStatus.RUNNING).build();
+        when(ingestionRunRepository.findById(5L)).thenReturn(Optional.of(managed));
+
+        doThrow(new RuntimeException("broker down")).when(taskPublisher).enqueueIngestionTask(any());
+
+        IngestionRunStartResponse response = ingestionJobRunner.startRun(UUID.randomUUID().toString());
+
+        assertThat(response.runId()).isEqualTo(5L);
+        assertThat(response.tasksEnqueued()).isEqualTo(0);
+        assertThat(response.status()).isEqualTo(IngestionRunStatus.FAILED.name());
+
+        ArgumentCaptor<IngestionRun> runCaptor = ArgumentCaptor.forClass(IngestionRun.class);
+        verify(ingestionRunRepository, atLeast(2)).save(runCaptor.capture());
+        IngestionRun finalRun = runCaptor.getAllValues().getLast();
+        assertThat(finalRun.getStatus()).isEqualTo(IngestionRunStatus.FAILED);
+        assertThat(finalRun.getCompletedAt()).isNotNull();
     }
 }

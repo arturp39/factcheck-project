@@ -6,6 +6,7 @@ You are given:
 3. A verdict about the claim produced by a separate fact-checking step (true, false, mixed or unclear).
 
 Task: briefly analyze the QUALITY and LIMITATIONS of the evidence used for this verdict.
+Evidence lines may include MBFC bias, factual_reporting, and credibility labels; consider them as source quality signals.
 
 Consider:
 - Are the sources diverse or mostly from one outlet?
