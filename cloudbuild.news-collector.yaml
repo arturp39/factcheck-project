@@ -1,7 +1,7 @@
 substitutions:
   _REGION: us-central1
   _AR_REPO: factcheck
-  _SERVICE_NAME: news-collector
+  _SERVICE_NAME: factcheck-news-collector
   _SERVICE_DIR: news-collector
 
 steps:

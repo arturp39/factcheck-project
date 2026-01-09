@@ -1,7 +1,7 @@
 substitutions:
   _REGION: us-central1
   _AR_REPO: factcheck
-  _SERVICE_NAME: backend
+  _SERVICE_NAME: factcheck-backend
   _SERVICE_DIR: backend
 
 steps:
