@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -29,6 +30,7 @@ public class SourceService {
                 .toList();
     }
 
+    @Transactional
     public SourceResponse createSource(SourceCreateRequest request) {
         Publisher publisher = resolvePublisherForCreate(request);
 
@@ -43,21 +45,25 @@ public class SourceService {
                 .fetchIntervalMinutes(request.fetchIntervalMinutes() != null ? request.fetchIntervalMinutes() : 30)
                 .build();
 
+        normalizeByKind(endpoint);
         validateEndpoint(endpoint);
 
-        try {
-            return toResponse(sourceEndpointRepository.save(endpoint));
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalArgumentException("Source endpoint already exists for " + request.displayName(), e);
-        }
+        return saveEndpoint(endpoint, request.displayName());
     }
 
+    @Transactional
     public SourceResponse updateSource(Long id, SourceUpdateRequest request) {
         SourceEndpoint endpoint = sourceEndpointRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Source endpoint not found: " + id));
 
-        if (request.publisherId() != null || request.publisherName() != null) {
-            Publisher publisher = resolvePublisherForUpdate(request);
+        boolean publisherTouched =
+                request.publisherId() != null
+                        || request.publisherName() != null
+                        || request.countryCode() != null
+                        || request.websiteUrl() != null;
+
+        if (publisherTouched) {
+            Publisher publisher = resolvePublisherForUpdate(endpoint, request);
             endpoint.setPublisher(publisher);
         }
 
@@ -69,71 +75,94 @@ public class SourceService {
         if (request.enabled() != null) endpoint.setEnabled(request.enabled());
         if (request.fetchIntervalMinutes() != null) endpoint.setFetchIntervalMinutes(request.fetchIntervalMinutes());
 
+        normalizeByKind(endpoint);
         validateEndpoint(endpoint);
 
+        return saveEndpoint(endpoint, endpoint.getDisplayName());
+    }
+
+    private SourceResponse saveEndpoint(SourceEndpoint endpoint, String nameForError) {
         try {
             return toResponse(sourceEndpointRepository.save(endpoint));
         } catch (DataIntegrityViolationException e) {
-            throw new IllegalArgumentException("Source endpoint already exists for " + endpoint.getDisplayName(), e);
+            throw new IllegalArgumentException("Source endpoint already exists for " + nameForError, e);
         }
     }
 
     private Publisher resolvePublisherForCreate(SourceCreateRequest request) {
-        if (request.publisherId() != null) {
-            Publisher existing = publisherRepository.findById(request.publisherId())
-                    .orElseThrow(() -> new IllegalArgumentException("Publisher not found: " + request.publisherId()));
-            return updatePublisherFields(existing, request.publisherName(), request.countryCode(),
-                    request.websiteUrl());
-        }
-
-        String name = request.publisherName();
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("publisherName is required when publisherId is not provided");
-        }
-
-        Publisher publisher = publisherRepository.findByNameIgnoreCase(name)
-                .orElseGet(() -> Publisher.builder().name(name).build());
-
-        return updatePublisherFields(publisher, name, request.countryCode(),
-                request.websiteUrl());
+        return resolvePublisher(
+                request.publisherId(),
+                request.publisherName(),
+                null,
+                request.countryCode(),
+                request.websiteUrl(),
+                true
+        );
     }
 
-    private Publisher resolvePublisherForUpdate(SourceUpdateRequest request) {
-        if (request.publisherId() != null) {
-            Publisher existing = publisherRepository.findById(request.publisherId())
-                    .orElseThrow(() -> new IllegalArgumentException("Publisher not found: " + request.publisherId()));
-            return updatePublisherFields(existing, request.publisherName(), request.countryCode(),
-                    request.websiteUrl());
-        }
-
-        String name = request.publisherName();
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("publisherName is required when publisherId is not provided");
-        }
-
-        Publisher publisher = publisherRepository.findByNameIgnoreCase(name)
-                .orElseGet(() -> Publisher.builder().name(name).build());
-
-        return updatePublisherFields(publisher, name, request.countryCode(),
-                request.websiteUrl());
+    private Publisher resolvePublisherForUpdate(SourceEndpoint endpoint, SourceUpdateRequest request) {
+        return resolvePublisher(
+                request.publisherId(),
+                request.publisherName(),
+                endpoint.getPublisher(),
+                request.countryCode(),
+                request.websiteUrl(),
+                false
+        );
     }
 
-    private Publisher updatePublisherFields(
-            Publisher publisher,
-            String name,
+    private Publisher resolvePublisher(
+            Long publisherId,
+            String publisherName,
+            Publisher fallbackPublisher,
             String countryCode,
-            String websiteUrl
+            String websiteUrl,
+            boolean requireNameIfNoId
     ) {
+        Publisher publisher;
+
+        if (publisherId != null) {
+            publisher = publisherRepository.findById(publisherId)
+                    .orElseThrow(() -> new IllegalArgumentException("Publisher not found: " + publisherId));
+        } else if (publisherName != null && !publisherName.isBlank()) {
+            publisher = publisherRepository.findByNameIgnoreCase(publisherName)
+                    .orElseGet(() -> Publisher.builder().name(publisherName).build());
+        } else {
+            if (requireNameIfNoId) {
+                throw new IllegalArgumentException("publisherName is required when publisherId is not provided");
+            }
+            if (fallbackPublisher == null) {
+                throw new IllegalArgumentException("Publisher is required");
+            }
+            publisher = fallbackPublisher;
+        }
+
+        applyPublisherFields(publisher, publisherName, countryCode, websiteUrl);
+        return publisherRepository.save(publisher);
+    }
+
+    private void applyPublisherFields(Publisher publisher, String name, String countryCode, String websiteUrl) {
         if (name != null && !name.isBlank()) {
             publisher.setName(name);
         }
         if (countryCode != null) publisher.setCountryCode(countryCode);
         if (websiteUrl != null) publisher.setWebsiteUrl(websiteUrl);
+    }
 
-        return publisherRepository.save(publisher);
+    private void normalizeByKind(SourceEndpoint endpoint) {
+        if (endpoint.getKind() == SourceKind.RSS) {
+            endpoint.setApiProvider(null);
+            endpoint.setApiQuery(null);
+        } else if (endpoint.getKind() == SourceKind.API) {
+            endpoint.setRssUrl(null);
+        }
     }
 
     private void validateEndpoint(SourceEndpoint endpoint) {
+        if (endpoint.getKind() == null) {
+            throw new IllegalArgumentException("kind is required");
+        }
+
         if (endpoint.getKind() == SourceKind.RSS) {
             if (endpoint.getRssUrl() == null || endpoint.getRssUrl().isBlank()) {
                 throw new IllegalArgumentException("rssUrl is required for RSS endpoints");
