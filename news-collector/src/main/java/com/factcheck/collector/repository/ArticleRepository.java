@@ -21,10 +21,26 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     boolean existsByPublisher(Publisher publisher);
 
     @Query("""
-            select a from Article a
-            join fetch a.publisher p
-            left join fetch p.mbfcSource
-            where a.id = :id
-            """)
+        select a
+        from Article a
+        join fetch a.publisher p
+        left join fetch p.mbfcSource
+        where a.id = :id
+        """)
     Optional<Article> findByIdWithPublisherAndMbfc(@Param("id") Long id);
+
+    @Query("""
+        select a
+        from Article a
+        order by a.publishedDate desc nulls last, a.id desc
+        """)
+    List<Article> findLatest(@Param("limit") int limit);
+
+    @Query("""
+        select a
+        from Article a
+        where lower(a.title) like lower(concat('%', :q, '%'))
+        order by a.publishedDate desc nulls last, a.id desc
+        """)
+    List<Article> searchByTitle(@Param("q") String q, @Param("limit") int limit);
 }

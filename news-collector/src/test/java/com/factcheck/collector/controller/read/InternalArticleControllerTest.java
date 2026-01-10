@@ -5,6 +5,7 @@ import com.factcheck.collector.dto.ArticleMetadataResponse;
 import com.factcheck.collector.dto.SearchRequest;
 import com.factcheck.collector.dto.SearchResponse;
 import com.factcheck.collector.service.read.ArticleContentService;
+import com.factcheck.collector.service.read.ArticleListService;
 import com.factcheck.collector.service.read.ArticleMetadataService;
 import com.factcheck.collector.service.read.ArticleSearchService;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,8 @@ class InternalArticleControllerTest {
 
     @MockitoBean
     private ArticleMetadataService articleMetadataService;
-
+    @MockitoBean
+    private ArticleListService articleListService;
     @Test
     void search_passesRequestAndCorrelationIdToService() throws Exception {
         SearchResponse mockResponse = new SearchResponse(List.of(), 0, 5L, "cid-1");
