@@ -9,11 +9,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
-    <artifactId>demo</artifactId>
+    <groupId>com.factcheck</groupId>
+    <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>demo</name>
-    <description>Demo project for Spring Boot</description>
+    <name>backend</name>
+    <description>Backend service for factcheck project</description>
     <url/>
     <licenses>
         <license/>
