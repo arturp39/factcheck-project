@@ -72,3 +72,12 @@ cloud-tasks:
   target-url: ${CLOUD_TASKS_TARGET_URL:http://localhost:8081/ingestion/task}
   service-account-email: ${CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL:}
   access-token: ${CLOUD_TASKS_ACCESS_TOKEN:}
+
+chunking:
+  use-semantic: true
+  similarity-threshold: 0.65
+  min-sentences: 2
+  max-sentences: 8
+  max-tokens: 400
+  overlap-sentences: 1
+  semantic-min-sentences: 10

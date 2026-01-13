@@ -1,6 +1,6 @@
 package com.factcheck.backend.controller;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.service.ClaimWorkflowService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,10 +62,17 @@ class ClaimControllerTest {
     @Test
     void happyPathPopulatesModel() {
         Model model = new ExtendedModelMap();
-        Article article = new Article();
-        article.setTitle("A title");
-        article.setContent("content");
-        article.setSource("source");
+
+        ArticleDto article = new ArticleDto(
+                null,
+                "A title",
+                "content",
+                "source",
+                null,
+                null,
+                null,
+                null
+        );
 
         ClaimWorkflowService.VerifyResult result = new ClaimWorkflowService.VerifyResult(
                 "cid-1",
@@ -88,10 +95,16 @@ class ClaimControllerTest {
 
     @Test
     void followupReturnsResultWhenQuestionEmpty() {
-        Article article = new Article();
-        article.setTitle("t");
-        article.setContent("c");
-        article.setSource("s");
+        ArticleDto article = new ArticleDto(
+                null,
+                "t",
+                "c",
+                "s",
+                null,
+                null,
+                null,
+                null
+        );
 
         ClaimWorkflowService.ClaimContext context = new ClaimWorkflowService.ClaimContext(
                 "cid-ctx",
@@ -116,10 +129,16 @@ class ClaimControllerTest {
 
     @Test
     void followupHappyPathAddsAnswer() {
-        Article article = new Article();
-        article.setTitle("t");
-        article.setContent("c");
-        article.setSource("s");
+        ArticleDto article = new ArticleDto(
+                null,
+                "t",
+                "c",
+                "s",
+                null,
+                null,
+                null,
+                null
+        );
 
         ClaimWorkflowService.FollowupResult result = new ClaimWorkflowService.FollowupResult(
                 "cid-follow",
@@ -144,10 +163,16 @@ class ClaimControllerTest {
 
     @Test
     void analyzeBiasAddsBiasText() {
-        Article article = new Article();
-        article.setTitle("t");
-        article.setContent("c");
-        article.setSource("s");
+        ArticleDto article = new ArticleDto(
+                null,
+                "t",
+                "c",
+                "s",
+                null,
+                null,
+                null,
+                null
+        );
 
         ClaimWorkflowService.BiasResult result = new ClaimWorkflowService.BiasResult(
                 "cid-bias",

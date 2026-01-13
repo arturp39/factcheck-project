@@ -1,6 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class ClaimWorkflowService {
         validateClaim(normalized);
 
         ClaimLog saved = claimService.saveClaim(normalized);
-        List<Article> evidence = claimService.searchEvidence(normalized, cid);
+        List<ArticleDto> evidence = claimService.searchEvidence(normalized, cid);
         String aiResponse = vertexAiService.askModel(normalized, evidence);
         ClaimService.ParsedAnswer parsed = claimService.storeModelAnswer(saved.getId(), aiResponse);
 
@@ -50,7 +50,7 @@ public class ClaimWorkflowService {
         }
 
         ClaimLog logEntry = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
+        List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         String answer = vertexAiService.answerFollowUp(
                 logEntry.getClaimText(),
@@ -78,7 +78,7 @@ public class ClaimWorkflowService {
     public BiasResult bias(Long claimId, String correlationId) {
         String cid = useCorrelationId(correlationId);
         ClaimLog logEntry = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
+        List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         String biasText = vertexAiService.analyzeBias(
                 logEntry.getClaimText(),
@@ -101,7 +101,7 @@ public class ClaimWorkflowService {
     public ClaimContext loadClaimContext(Long claimId, String correlationId) {
         String cid = useCorrelationId(correlationId);
         ClaimLog logEntry = claimService.getClaim(claimId);
-        List<Article> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
+        List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         return new ClaimContext(
                 cid,
@@ -160,7 +160,7 @@ public class ClaimWorkflowService {
             String claim,
             String verdict,
             String explanation,
-            List<Article> evidence
+            List<ArticleDto> evidence
     ) {}
 
     public record FollowupResult(
@@ -170,7 +170,7 @@ public class ClaimWorkflowService {
             String verdict,
             String explanation,
             String biasAnalysis,
-            List<Article> evidence,
+            List<ArticleDto> evidence,
             String question,
             String answer
     ) {}
@@ -181,7 +181,7 @@ public class ClaimWorkflowService {
             String claim,
             String verdict,
             String biasAnalysis,
-            List<Article> evidence
+            List<ArticleDto> evidence
     ) {}
 
     public record ClaimContext(
@@ -192,7 +192,7 @@ public class ClaimWorkflowService {
             String verdict,
             String explanation,
             String biasAnalysis,
-            List<Article> evidence
+            List<ArticleDto> evidence
     ) {}
 
     public record ConversationHistory(

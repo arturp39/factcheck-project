@@ -13,6 +13,8 @@ from schemas import (
     PreprocessResponse,
     EmbedRequest,
     EmbedResponse,
+    SentenceEmbedRequest,
+    SentenceEmbedResponse,
     HealthResponse,
 )
 from services.preprocess import split_into_sentences, ensure_nltk_punkt
@@ -205,6 +207,67 @@ async def embed(req: EmbedRequest, request: Request) -> EmbedResponse:
         )
 
         return EmbedResponse(
+            embeddings=vectors,
+            dimension=len(vectors[0]) if vectors else 0,
+            model=settings.vertex_model
+            if not settings.use_fake_embeddings
+            else "deterministic-fake",
+            processingTimeMs=processing_ms,
+            correlationId=req.correlationId,
+        )
+
+@app.post("/embed-sentences", response_model=SentenceEmbedResponse)
+async def embed_sentences(
+    req: SentenceEmbedRequest, request: Request
+) -> SentenceEmbedResponse:
+    """
+    Embed sentences individually for semantic similarity analysis.
+    Used for intelligent chunk boundary detection.
+    """
+    cid = req.correlationId or getattr(request.state, "correlation_id", "none")
+
+    REQUEST_COUNT.labels(endpoint="/embed-sentences").inc()
+    with REQUEST_LATENCY.labels(endpoint="/embed-sentences").time():
+        start = time.time()
+        logger.info(
+            "Sentence embed request received",
+            extra={
+                "correlation_id": cid,
+                "context": {"sentence_count": len(req.sentences)},
+            },
+        )
+
+        try:
+            vectors = generate_embeddings(req.sentences, cid)
+        except ValueError as ve:
+            logger.warning(
+                "Validation error in embed-sentences: %s",
+                str(ve),
+                extra={"correlation_id": cid},
+            )
+            raise HTTPException(status_code=400, detail=str(ve))
+        except Exception as e:
+            logger.error(
+                "Sentence embedding generation failed: %s",
+                str(e),
+                extra={"correlation_id": cid},
+            )
+            raise HTTPException(status_code=503, detail="Sentence embedding failed")
+
+        processing_ms = int((time.time() - start) * 1000)
+
+        logger.info(
+            "Sentence embed completed",
+            extra={
+                "correlation_id": cid,
+                "context": {
+                    "embedding_count": len(vectors),
+                    "processingTimeMs": processing_ms,
+                },
+            },
+        )
+
+        return SentenceEmbedResponse(
             embeddings=vectors,
             dimension=len(vectors[0]) if vectors else 0,
             model=settings.vertex_model

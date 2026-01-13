@@ -1,12 +1,15 @@
 package com.factcheck.backend.controller;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
 import com.factcheck.backend.service.ClaimWorkflowService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -84,7 +87,6 @@ public class ClaimController {
 
     @PostMapping("/bias/{id}")
     public String analyzeBias(@PathVariable("id") Long claimId, Model model) {
-
         ClaimWorkflowService.BiasResult result = claimWorkflowService.bias(claimId, null);
         applyBaseModel(
                 model,
@@ -129,7 +131,7 @@ public class ClaimController {
             Model model,
             Long claimId,
             String claim,
-            List<Article> evidence,
+            List<ArticleDto> evidence,
             String verdict,
             String explanation,
             String biasAnalysis,
@@ -137,7 +139,7 @@ public class ClaimController {
     ) {
         model.addAttribute("claimId", claimId);
         model.addAttribute("claim", claim);
-        model.addAttribute("evidence", evidence);
+        model.addAttribute("evidence", evidence == null ? List.of() : evidence);
         model.addAttribute("verdict", verdict);
         model.addAttribute("explanation", explanation);
         model.addAttribute("biasAnalysis", biasAnalysis);

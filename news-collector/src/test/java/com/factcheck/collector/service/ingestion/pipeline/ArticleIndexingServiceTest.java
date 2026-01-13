@@ -2,6 +2,7 @@ package com.factcheck.collector.service.ingestion.pipeline;
 
 import com.factcheck.collector.domain.entity.Article;
 import com.factcheck.collector.domain.enums.ArticleStatus;
+import com.factcheck.collector.dto.ChunkingResult;
 import com.factcheck.collector.repository.ArticleRepository;
 import com.factcheck.collector.service.processing.ArticleProcessingService;
 import com.factcheck.collector.service.processing.EmbeddingService;
@@ -53,13 +54,15 @@ class ArticleIndexingServiceTest {
                 List.of(0.3d, 0.4d)
         );
 
-        when(articleProcessingService.createChunks(resolved, "text", "corr")).thenReturn(chunks);
+        when(articleProcessingService.createChunks(resolved, "text", "corr"))
+                .thenReturn(new ChunkingResult(chunks, null, false));
         when(embeddingService.embedChunks(chunks, "corr")).thenReturn(embeddings);
 
         boolean ok = service.index(input, "text", "corr");
 
         assertThat(ok).isTrue();
 
+        verify(embeddingService).embedChunks(chunks, "corr");
         verify(weaviateIndexingService).indexArticleChunks(resolved, chunks, embeddings, "corr");
 
         ArgumentCaptor<Article> savedCaptor = ArgumentCaptor.forClass(Article.class);
@@ -73,6 +76,34 @@ class ArticleIndexingServiceTest {
     }
 
     @Test
+    void indexReusesPrecomputedEmbeddingsWhenPresent() {
+        Article input = Article.builder().id(10L).build();
+
+        when(articleRepository.findByIdWithPublisherAndMbfc(10L)).thenReturn(Optional.of(input));
+
+        List<String> chunks = List.of("c1", "c2");
+        List<List<Double>> precomputed = List.of(
+                List.of(0.11d, 0.22d),
+                List.of(0.33d, 0.44d)
+        );
+
+        when(articleProcessingService.createChunks(input, "text", "corr"))
+                .thenReturn(new ChunkingResult(chunks, precomputed, true));
+
+        boolean ok = service.index(input, "text", "corr");
+
+        assertThat(ok).isTrue();
+
+        verifyNoInteractions(embeddingService);
+        verify(weaviateIndexingService).indexArticleChunks(input, chunks, precomputed, "corr");
+        verify(articleRepository).save(input);
+
+        assertThat(input.getChunkCount()).isEqualTo(2);
+        assertThat(input.isWeaviateIndexed()).isTrue();
+        assertThat(input.getStatus()).isEqualTo(ArticleStatus.INDEXED);
+    }
+
+    @Test
     void indexUsesInputArticleWhenNoResolvedEntityReturned() {
         Article input = Article.builder().id(10L).build();
 
@@ -81,7 +112,8 @@ class ArticleIndexingServiceTest {
         List<String> chunks = List.of("c1");
         List<List<Double>> embeddings = List.of(List.of(0.1d));
 
-        when(articleProcessingService.createChunks(input, "text", "corr")).thenReturn(chunks);
+        when(articleProcessingService.createChunks(input, "text", "corr"))
+                .thenReturn(new ChunkingResult(chunks, null, false));
         when(embeddingService.embedChunks(chunks, "corr")).thenReturn(embeddings);
 
         boolean ok = service.index(input, "text", "corr");
@@ -103,7 +135,8 @@ class ArticleIndexingServiceTest {
         List<String> chunks = List.of("c1");
         List<List<Double>> embeddings = List.of(List.of(0.1d));
 
-        when(articleProcessingService.createChunks(input, "text", "corr")).thenReturn(chunks);
+        when(articleProcessingService.createChunks(input, "text", "corr"))
+                .thenReturn(new ChunkingResult(chunks, null, false));
         when(embeddingService.embedChunks(chunks, "corr")).thenReturn(embeddings);
 
         boolean ok = service.index(input, "text", "corr");

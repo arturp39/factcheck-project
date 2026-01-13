@@ -1,6 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.util.PromptLoader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,17 +40,22 @@ class VertexAiServiceTest {
         return resp;
     }
 
-    private Article article(String title, String content, String source) {
-        Article a = new Article();
-        a.setTitle(title);
-        a.setContent(content);
-        a.setSource(source);
-        return a;
+    private ArticleDto article(String title, String content, String source) {
+        return new ArticleDto(
+                null,
+                title,
+                content,
+                source,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     @Test
     void askModel_usesFactcheckTemplateAndReturnsText() throws Exception {
-        List<Article> evidence = List.of(article("Title A", "Text A", "Source A"));
+        List<ArticleDto> evidence = List.of(article("Title A", "Text A", "Source A"));
 
         when(promptLoader.loadPrompt("factcheck"))
                 .thenReturn("Claim: {{CLAIM}}\n\nEvidence:\n{{EVIDENCE}}");
@@ -84,7 +89,7 @@ class VertexAiServiceTest {
 
     @Test
     void analyzeBias_usesBiasTemplate() throws Exception {
-        List<Article> evidence = List.of(article("T1", "C1", "S1"));
+        List<ArticleDto> evidence = List.of(article("T1", "C1", "S1"));
 
         when(promptLoader.loadPrompt("bias"))
                 .thenReturn("Bias analysis for {{CLAIM}} with verdict {{VERDICT}} and evidence {{EVIDENCE}}");
@@ -117,7 +122,7 @@ class VertexAiServiceTest {
 
     @Test
     void answerFollowUp_usesFollowupTemplate() throws Exception {
-        List<Article> evidence = List.of(article("T1", "C1", "S1"));
+        List<ArticleDto> evidence = List.of(article("T1", "C1", "S1"));
 
         when(promptLoader.loadPrompt("followup"))
                 .thenReturn("Follow-up for {{CLAIM}} / {{FOLLOWUP_QUESTION}}");

@@ -1,6 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.util.PromptLoader;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,38 +29,22 @@ public class VertexAiService {
         this.mapper = new ObjectMapper();
     }
 
-    // main factcheck
-    public String askModel(String claim, List<Article> evidence) {
+    public String askModel(String claim, List<ArticleDto> evidence) {
         try {
-            log.info("VertexAiService.askModel() called, claim length={}", claim.length());
-
             if (evidence == null) {
                 evidence = List.of();
             }
-            log.info("Evidence size={}", evidence.size());
 
             String endpoint = authHelper.chatEndpoint();
-
-            // Build a fact-check prompt by injecting the claim and condensed evidence
             String prompt = buildFactcheckPrompt(claim, evidence);
-
-            log.debug("LLM prompt  >>>\n{}\n<<< end prompt", prompt);
-
             String requestBody = buildRequestBody(prompt);
 
-            log.debug("LLM request body >>>\n{}\n<<< end request body", requestBody);
-
-            HttpResponse<String> response =
-                    vertexApiClient.postJson(endpoint, requestBody);
-
-            log.info("Vertex response status={}", response.statusCode());
+            HttpResponse<String> response = vertexApiClient.postJson(endpoint, requestBody);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.debug("Vertex raw response body >>>\n{}\n<<< end raw response", response.body());
                 return extractTextFromResponse(response.body());
-            } else {
-                return "Vertex AI error " + response.statusCode() + ": " + response.body();
             }
+            return "Vertex AI error " + response.statusCode() + ": " + response.body();
 
         } catch (Exception e) {
             log.error("Error calling Vertex AI", e);
@@ -68,7 +52,7 @@ public class VertexAiService {
         }
     }
 
-    private String buildFactcheckPrompt(String claim, List<Article> evidence) {
+    private String buildFactcheckPrompt(String claim, List<ArticleDto> evidence) {
         String template = promptLoader.loadPrompt("factcheck");
 
         String evidenceText = (evidence == null || evidence.isEmpty())
@@ -82,30 +66,22 @@ public class VertexAiService {
                 .replace("{{EVIDENCE}}", evidenceText);
     }
 
-    // 2) Bias & limitations
-    public String analyzeBias(String claim, List<Article> evidence, String verdict) {
+    public String analyzeBias(String claim, List<ArticleDto> evidence, String verdict) {
         try {
             if (evidence == null) {
                 evidence = List.of();
             }
 
             String endpoint = authHelper.chatEndpoint();
-            // Bias prompt
             String prompt = buildBiasPrompt(claim, evidence, verdict);
-            log.debug("Bias prompt (truncated)={}...",
-                    prompt.substring(0, Math.min(prompt.length(), 500)));
-
             String requestBody = buildRequestBody(prompt);
-            HttpResponse<String> response =
-                    vertexApiClient.postJson(endpoint, requestBody);
 
-            log.info("Vertex bias analysis status={}", response.statusCode());
+            HttpResponse<String> response = vertexApiClient.postJson(endpoint, requestBody);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return extractTextFromResponse(response.body());
-            } else {
-                return "Bias analysis error " + response.statusCode() + ": " + response.body();
             }
+            return "Bias analysis error " + response.statusCode() + ": " + response.body();
 
         } catch (Exception e) {
             log.error("Error calling Vertex AI for bias analysis", e);
@@ -113,7 +89,7 @@ public class VertexAiService {
         }
     }
 
-    private String buildBiasPrompt(String claim, List<Article> evidence, String verdict) {
+    private String buildBiasPrompt(String claim, List<ArticleDto> evidence, String verdict) {
         String template = promptLoader.loadPrompt("bias");
 
         String evidenceText = (evidence == null || evidence.isEmpty())
@@ -128,9 +104,8 @@ public class VertexAiService {
                 .replace("{{VERDICT}}", verdict == null ? "unclear" : verdict);
     }
 
-    // 3) Follow-up answers
     public String answerFollowUp(String claim,
-                                 List<Article> evidence,
+                                 List<ArticleDto> evidence,
                                  String verdict,
                                  String explanation,
                                  String followupQuestion) {
@@ -140,22 +115,15 @@ public class VertexAiService {
             }
 
             String endpoint = authHelper.chatEndpoint();
-            // Follow-up prompt
             String prompt = buildFollowupPrompt(claim, evidence, verdict, explanation, followupQuestion);
-            log.debug("Follow-up prompt (truncated)={}...",
-                    prompt.substring(0, Math.min(prompt.length(), 500)));
-
             String requestBody = buildRequestBody(prompt);
-            HttpResponse<String> response =
-                    vertexApiClient.postJson(endpoint, requestBody);
 
-            log.info("Vertex follow-up status={}", response.statusCode());
+            HttpResponse<String> response = vertexApiClient.postJson(endpoint, requestBody);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return extractTextFromResponse(response.body());
-            } else {
-                return "Follow-up error " + response.statusCode() + ": " + response.body();
             }
+            return "Follow-up error " + response.statusCode() + ": " + response.body();
 
         } catch (Exception e) {
             log.error("Error calling Vertex AI for follow-up", e);
@@ -164,7 +132,7 @@ public class VertexAiService {
     }
 
     private String buildFollowupPrompt(String claim,
-                                       List<Article> evidence,
+                                       List<ArticleDto> evidence,
                                        String verdict,
                                        String explanation,
                                        String followupQuestion) {
@@ -173,7 +141,7 @@ public class VertexAiService {
         String evidenceText = (evidence == null || evidence.isEmpty())
                 ? "(no evidence found)"
                 : evidence.stream()
-                .map(a -> a.getTitle() + " | " + a.getSource() + " | " + a.getContent())
+                .map(a -> a.title() + " | " + a.source() + " | " + a.content())
                 .collect(Collectors.joining("\n\n---\n\n"));
 
         return template
@@ -184,32 +152,32 @@ public class VertexAiService {
                 .replace("{{FOLLOWUP_QUESTION}}", followupQuestion);
     }
 
-    private String formatEvidenceForFactcheck(Article article) {
+    private String formatEvidenceForFactcheck(ArticleDto article) {
         String mbfc = buildMbfcInfo(article, false);
         if (mbfc == null) {
-            return article.getTitle() + " | " + article.getContent();
+            return article.title() + " | " + article.content();
         }
-        return article.getTitle() + " | " + mbfc + " | " + article.getContent();
+        return article.title() + " | " + mbfc + " | " + article.content();
     }
 
-    private String formatEvidenceForBias(Article article) {
+    private String formatEvidenceForBias(ArticleDto article) {
         String mbfc = buildMbfcInfo(article, true);
         if (mbfc == null) {
-            return article.getTitle() + " | " + article.getSource() + " | " + article.getContent();
+            return article.title() + " | " + article.source() + " | " + article.content();
         }
-        return article.getTitle() + " | " + article.getSource() + " | " + mbfc + " | " + article.getContent();
+        return article.title() + " | " + article.source() + " | " + mbfc + " | " + article.content();
     }
 
-    private String buildMbfcInfo(Article article, boolean includeBias) {
+    private String buildMbfcInfo(ArticleDto article, boolean includeBias) {
         List<String> parts = new java.util.ArrayList<>(3);
-        if (includeBias && isNotBlank(article.getMbfcBias())) {
-            parts.add("bias=" + article.getMbfcBias());
+        if (includeBias && isNotBlank(article.mbfcBias())) {
+            parts.add("bias=" + article.mbfcBias());
         }
-        if (isNotBlank(article.getMbfcFactualReporting())) {
-            parts.add("factual_reporting=" + article.getMbfcFactualReporting());
+        if (isNotBlank(article.mbfcFactualReporting())) {
+            parts.add("factual_reporting=" + article.mbfcFactualReporting());
         }
-        if (isNotBlank(article.getMbfcCredibility())) {
-            parts.add("credibility=" + article.getMbfcCredibility());
+        if (isNotBlank(article.mbfcCredibility())) {
+            parts.add("credibility=" + article.mbfcCredibility());
         }
         if (parts.isEmpty()) {
             return null;
@@ -221,7 +189,6 @@ public class VertexAiService {
         return value != null && !value.trim().isEmpty();
     }
 
-    // Shared helpers
     private String buildRequestBody(String prompt) throws Exception {
         var root = mapper.createObjectNode();
         var contents = root.putArray("contents");

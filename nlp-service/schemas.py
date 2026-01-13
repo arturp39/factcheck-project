@@ -79,3 +79,55 @@ class HealthResponse(BaseModel):
     version: str
     vertexAI: dict
     uptime: int
+
+class SentenceEmbedRequest(BaseModel):
+    sentences: List[str] = Field(
+        ...,
+        description="List of sentences to embed individually for semantic analysis",
+        min_length=1,
+        max_length=200
+    )
+    correlationId: Optional[str] = Field(
+        None,
+        description="Optional correlation ID for request tracing"
+    )
+
+    @field_validator("sentences")
+    @classmethod
+    def validate_sentences(cls, v: List[str]) -> List[str]:
+        if not v:
+            raise ValueError("sentences list cannot be empty")
+
+        if len(v) > settings.max_texts_per_request:
+            raise ValueError(
+                f"Too many sentences in one request (>{settings.max_texts_per_request})."
+            )
+
+        total_chars = sum(len(s.strip()) for s in v)
+        if total_chars > settings.max_total_chars_per_request:
+            raise ValueError(
+                f"Total size of sentences exceeds limit "
+                f"({settings.max_total_chars_per_request} characters)."
+            )
+
+        for s in v:
+            if not s.strip():
+                raise ValueError("sentences cannot contain empty or whitespace-only items")
+            if len(s) > settings.max_text_length:
+                raise ValueError(
+                    f"One of the sentences is too long (>{settings.max_text_length} characters)."
+                )
+
+        return v
+
+
+class SentenceEmbedResponse(BaseModel):
+    embeddings: List[List[float]] = Field(
+        ..., description="List of embedding vectors, one per sentence"
+    )
+    dimension: int = Field(..., description="Dimensionality of each embedding vector")
+    model: str = Field(..., description="Model used for embeddings")
+    processingTimeMs: int = Field(..., description="Processing time in milliseconds")
+    correlationId: Optional[str] = Field(
+        None, description="Correlation ID from request"
+    )

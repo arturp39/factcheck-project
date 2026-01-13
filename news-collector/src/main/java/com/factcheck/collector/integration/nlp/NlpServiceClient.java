@@ -1,10 +1,7 @@
 package com.factcheck.collector.integration.nlp;
 
 import com.factcheck.collector.exception.NlpServiceException;
-import com.factcheck.collector.integration.nlp.dto.EmbedRequest;
-import com.factcheck.collector.integration.nlp.dto.EmbedResponse;
-import com.factcheck.collector.integration.nlp.dto.PreprocessRequest;
-import com.factcheck.collector.integration.nlp.dto.PreprocessResponse;
+import com.factcheck.collector.integration.nlp.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -107,4 +104,44 @@ public class NlpServiceClient {
             throw new NlpServiceException("NLP embed failed", e);
         }
     }
+    public SentenceEmbedResponse embedSentences(SentenceEmbedRequest request) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String correlationId = request.getCorrelationId();
+            String cid = (correlationId != null && !correlationId.isBlank())
+                    ? correlationId
+                    : UUID.randomUUID().toString();
+            headers.set("X-Correlation-Id", cid);
+
+            HttpEntity<SentenceEmbedRequest> entity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<SentenceEmbedResponse> resp = restTemplate.exchange(
+                    baseUrl + "/embed-sentences",
+                    HttpMethod.POST,
+                    entity,
+                    SentenceEmbedResponse.class
+            );
+
+            if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
+                throw new NlpServiceException(
+                        "NLP embed-sentences failed: HTTP status " +
+                                (resp != null ? resp.getStatusCode() : "null response")
+                );
+            }
+
+            SentenceEmbedResponse body = resp.getBody();
+            if (body == null) {
+                throw new NlpServiceException("NLP embed-sentences failed: empty response body");
+            }
+
+            return body;
+
+        } catch (RestClientException e) {
+            log.error("NLP embed-sentences call failed", e);
+            throw new NlpServiceException("NLP embed-sentences failed", e);
+        }
+    }
+
 }

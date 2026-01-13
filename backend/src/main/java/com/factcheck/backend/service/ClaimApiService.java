@@ -1,16 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.dto.BiasResponse;
-import com.factcheck.backend.dto.ClaimHistoryResponse;
-import com.factcheck.backend.dto.ClaimResponse;
-import com.factcheck.backend.dto.ClaimSummary;
-import com.factcheck.backend.dto.ClaimsPageResponse;
-import com.factcheck.backend.dto.EvidenceItem;
-import com.factcheck.backend.dto.EvidenceResponse;
-import com.factcheck.backend.dto.FollowupItem;
-import com.factcheck.backend.dto.FollowupResponse;
-import com.factcheck.backend.dto.VerifyResponse;
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.*;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
 import lombok.RequiredArgsConstructor;
@@ -150,7 +140,10 @@ public class ClaimApiService {
                 : UUID.randomUUID().toString();
     }
 
-    private List<EvidenceItem> toEvidenceItems(List<Article> evidence) {
+    private List<EvidenceItem> toEvidenceItems(List<ArticleDto> evidence) {
+        if (evidence == null || evidence.isEmpty()) {
+            return List.of();
+        }
         return evidence.stream()
                 .map(this::toEvidenceItem)
                 .toList();
@@ -169,12 +162,12 @@ public class ClaimApiService {
                 .toList();
     }
 
-    private EvidenceItem toEvidenceItem(Article article) {
+    private EvidenceItem toEvidenceItem(ArticleDto article) {
         return new EvidenceItem(
-                article.getTitle(),
-                article.getSource(),
-                article.getPublishedAt(),
-                buildSnippet(article.getContent())
+                article.title(),
+                article.source(),
+                article.publishedAt(),
+                buildSnippet(article.content())
         );
     }
 

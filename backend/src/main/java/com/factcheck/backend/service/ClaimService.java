@@ -1,6 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
 import com.factcheck.backend.integration.nlp.NlpServiceClient;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,44 +38,35 @@ public class ClaimService {
         this.searchTopK = searchTopK;
     }
 
-    public List<Article> searchEvidence(String claim) {
+    public List<ArticleDto> searchEvidence(String claim) {
         return searchEvidence(claim, null);
     }
 
-    public List<Article> searchEvidence(String claim, String correlationId) {
+    public List<ArticleDto> searchEvidence(String claim, String correlationId) {
         log.info("searchEvidence() called with claim='{}'", claim);
 
         try {
             String cid = (correlationId != null && !correlationId.isBlank())
                     ? correlationId
                     : UUID.randomUUID().toString();
-            log.debug("Using correlationId={} for claim", cid);
 
-            // Embed the claim once so Weaviate vector search can be used
             float[] claimVector = nlpServiceClient.embedSingleToVector(claim, cid);
-            log.info("Claim embedding length={}", claimVector.length);
 
-            // Send the vector to Weaviate and parse the returned chunks
             String graphqlResponse = weaviateClientService.searchByVector(claimVector, searchTopK, cid);
-            List<EvidenceChunk> chunks =
-                    weaviateClientService.parseEvidenceChunks(graphqlResponse);
+            List<EvidenceChunk> chunks = weaviateClientService.parseEvidenceChunks(graphqlResponse);
 
-            log.info("Weaviate returned {} evidence chunks", chunks.size());
-
-            // Map raw chunks into Article objects expected by the UI
             return chunks.stream()
-                    .map(c -> {
-                        Article a = new Article();
-                        a.setTitle(c.title());
-                        a.setContent(c.content());
-                        a.setSource(c.source());
-                        a.setPublishedAt(c.publishedAt());
-                        a.setMbfcBias(c.mbfcBias());
-                        a.setMbfcFactualReporting(c.mbfcFactualReporting());
-                        a.setMbfcCredibility(c.mbfcCredibility());
-                        return a;
-                    })
-                    .collect(Collectors.toList());
+                    .map(c -> new ArticleDto(
+                            null,
+                            c.title(),
+                            c.content(),
+                            c.source(),
+                            c.publishedAt(),
+                            c.mbfcBias(),
+                            c.mbfcFactualReporting(),
+                            c.mbfcCredibility()
+                    ))
+                    .toList();
 
         } catch (Exception e) {
             log.error("Vector search failed for claim='{}'", claim, e);
@@ -87,14 +77,10 @@ public class ClaimService {
     public ClaimLog saveClaim(String claim) {
         ClaimLog logEntity = new ClaimLog();
         logEntity.setClaimText(claim);
-        ClaimLog saved = claimRepo.save(logEntity);
-        log.info("Saved claim id={} text='{}'", saved.getId(), claim);
-        return saved;
+        return claimRepo.save(logEntity);
     }
 
     public ParsedAnswer storeModelAnswer(Long claimId, String answer) {
-        log.info("Storing model answer for claimId={}", claimId);
-
         ClaimLog logEntity = getClaim(claimId);
         ParsedAnswer parsed = parseAnswer(answer);
 
@@ -107,7 +93,6 @@ public class ClaimService {
     }
 
     public void storeBiasAnalysis(Long claimId, String biasText) {
-        log.info("Storing bias analysis for claimId={}", claimId);
         ClaimLog logEntity = getClaim(claimId);
         logEntity.setBiasAnalysis(biasText);
         claimRepo.save(logEntity);

@@ -1,6 +1,6 @@
 package com.factcheck.backend.service;
 
-import com.factcheck.backend.entity.Article;
+import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
 import com.factcheck.backend.integration.nlp.NlpServiceClient;
@@ -73,13 +73,13 @@ class ClaimServiceTest {
         when(weaviateClientService.parseEvidenceChunks(anyString()))
                 .thenReturn(chunks);
 
-        List<Article> articles = claimService.searchEvidence(claim);
+        List<ArticleDto> articles = claimService.searchEvidence(claim);
 
         assertThat(articles).hasSize(2);
-        assertThat(articles.get(0).getTitle()).isEqualTo("Title 1");
-        assertThat(articles.get(0).getContent()).isEqualTo("Content 1");
-        assertThat(articles.get(0).getSource()).isEqualTo("Source 1");
-        assertThat(articles.get(1).getTitle()).isEqualTo("Title 2");
+        assertThat(articles.get(0).title()).isEqualTo("Title 1");
+        assertThat(articles.get(0).content()).isEqualTo("Content 1");
+        assertThat(articles.get(0).source()).isEqualTo("Source 1");
+        assertThat(articles.get(1).title()).isEqualTo("Title 2");
     }
 
     @Test
