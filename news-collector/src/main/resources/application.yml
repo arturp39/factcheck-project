@@ -7,8 +7,9 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
-    hikari.maximum-pool-size: 2
-    hikari.minimum-idle: 0
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -45,8 +46,6 @@ nlp-service:
   url: ${NLP_SERVICE_URL:http://localhost:8000}
 
 ingestion:
-  max-parallel-sources: 1
-  interval-ms: 600000
   run-timeout: PT6H
   block-threshold: 2
   block-duration: PT24H
