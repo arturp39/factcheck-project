@@ -1,4 +1,4 @@
-# Postgres Schema (Operational)
+﻿# Postgres Schema (Operational)
 
 Databases
 - `factcheck_backend` (backend service)
@@ -13,12 +13,22 @@ Tables
 - `claim_log`
   - `id` BIGSERIAL PK
   - `claim_text` TEXT NOT NULL
+  - `owner_username` VARCHAR NOT NULL
   - `created_at` TIMESTAMPTZ DEFAULT now()
   - `model_answer` TEXT (raw LLM output)
   - `verdict` VARCHAR(255)
   - `explanation` TEXT
   - `bias_analysis` TEXT
   - Index: `idx_claim_log_created_at`
+  - Index: `idx_claim_log_owner_username_created_at`
+
+- `app_user`
+  - `id` BIGSERIAL PK
+  - `username` VARCHAR NOT NULL (unique)
+  - `password_hash` VARCHAR NOT NULL
+  - `role` VARCHAR NOT NULL
+  - `created_at` TIMESTAMPTZ DEFAULT now()
+  - Index: `idx_app_user_username`
 
 - `claim_followup`
   - `id` BIGSERIAL PK
@@ -139,3 +149,4 @@ Tables
   - `source_url_domain` TEXT
   - `credibility` TEXT
   - `synced_at` TIMESTAMPTZ DEFAULT now()
+

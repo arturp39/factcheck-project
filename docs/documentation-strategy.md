@@ -1,4 +1,4 @@
-# Documentation Strategy & Gap Assessment
+﻿# Documentation Strategy & Gap Assessment
 
 Standards & tools
 - Specs in OpenAPI 3.0 (`docs/openapi/*.yaml`); lint with Redocly CLI.
@@ -20,3 +20,4 @@ Documentation gaps
 - Authentication/authorization docs are not present, not implemented in the project.
 - Rate limiting is not documented and not enforced.
 - Release notes/versioning, changelog not present.
+

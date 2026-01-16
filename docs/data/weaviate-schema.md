@@ -1,4 +1,4 @@
-# Weaviate Schema (Vector Store)
+﻿# Weaviate Schema (Vector Store)
 
 Class: `ArticleChunk`
 - `text` (string): chunk content.
@@ -20,3 +20,4 @@ Queries
 Inserts
 - Collector writes chunks via Weaviate HTTP `/v1/batch/objects` with provided vector.
 - Default vectorizer set to `none`; `X-API-KEY` used when configured.
+

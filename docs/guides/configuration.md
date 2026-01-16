@@ -1,4 +1,4 @@
-# Configuration
+﻿# Configuration
 
 Env files
 - Copy `infra/.env.example` to `infra/.env` and adjust.
@@ -28,3 +28,4 @@ Rate/size limits
 - Pagination: size 1-200.
 - Collector search: embedding dimension must match `SEARCH_EMBEDDING_DIMENSION`.
 - NLP limits: configurable max texts per request, max text length, and total chars.
+

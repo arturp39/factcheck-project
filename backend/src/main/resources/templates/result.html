@@ -12,6 +12,9 @@
     <div class="header-subtitle">
         Result of the last fact-check request.
     </div>
+    <div class="header-actions">
+        <a href="/auth/logout" class="link-logout">Sign out</a>
+    </div>
 </header>
 
 <main class="main">
@@ -133,19 +136,65 @@
     <section class="card">
         <h2 class="section-title">Evidence used</h2>
 
-        <div th:if="${#lists.isEmpty(evidence)}">
+        <div th:if="${#lists.isEmpty(evidenceViews)}">
             <p class="muted"><i>No evidence found in the vector database.</i></p>
         </div>
 
-        <div th:if="${!#lists.isEmpty(evidence)}">
+        <div th:if="${!#lists.isEmpty(evidenceViews)}">
             <ul class="evidence-list">
-                <li th:each="a : ${evidence}" class="evidence-item">
-                    <div class="evidence-title" th:text="${a.title}">Article title</div>
-                    <div class="evidence-source" th:text="${a.source}">Source name</div>
-                    <p class="evidence-text evidence-text-collapsed" th:text="${a.content}">
-                        Article content snippet
-                    </p>
-                    <button type="button" class="evidence-toggle" aria-expanded="false">Show more</button>
+                <li th:each="e : ${evidenceViews}"
+                    class="evidence-item"
+                    th:classappend="${e.grouped} ? ' evidence-group' : ''">
+                    <div class="evidence-title">
+                        <a th:if="${!#strings.isEmpty(e.url)}"
+                           th:href="${e.url}"
+                           class="evidence-title-link"
+                           target="_blank"
+                           rel="noopener"
+                           th:text="${#strings.isEmpty(e.title) ? 'Untitled article' : e.title}">
+                            Article title
+                        </a>
+                        <span th:if="${#strings.isEmpty(e.url)}"
+                              th:text="${#strings.isEmpty(e.title) ? 'Untitled article' : e.title}">
+                            Article title
+                        </span>
+                    </div>
+                    <div class="evidence-meta">
+                        <span th:if="${!#strings.isEmpty(e.source)}"
+                              th:text="'Source: ' + e.source">
+                            Source name
+                        </span>
+                        <span th:if="${e.publishedAt != null}"
+                              th:text="'Published: ' + #temporals.format(e.publishedAt, 'yyyy-MM-dd')">
+                            Published: date
+                        </span>
+                        <span th:if="${e.grouped}"
+                              th:text="${e.chunkCount} + ' chunks'">
+                            3 chunks
+                        </span>
+                        <a th:if="${!#strings.isEmpty(e.url)}"
+                           th:href="${e.url}"
+                           class="evidence-link"
+                           target="_blank"
+                           rel="noopener">
+                            Read article
+                        </a>
+                    </div>
+                    <div class="evidence-chunks">
+                        <div th:each="chunk : ${e.chunks}" class="evidence-chunk">
+                            <p class="evidence-text"
+                               th:classappend="${chunk.showToggle} ? ' evidence-text-collapsed' : ''"
+                               th:text="${chunk.content}">
+                                Article content snippet
+                            </p>
+                            <button th:if="${chunk.showToggle}"
+                                    type="button"
+                                    class="evidence-toggle"
+                                    aria-expanded="false">
+                                Show more
+                            </button>
+                        </div>
+                    </div>
                 </li>
             </ul>
         </div>
@@ -155,14 +204,15 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const items = document.querySelectorAll('.evidence-item');
-        items.forEach((item) => {
-            const text = item.querySelector('.evidence-text');
-            const toggle = item.querySelector('.evidence-toggle');
-            if (!text || !toggle) return;
-
+        const toggles = document.querySelectorAll('.evidence-toggle');
+        toggles.forEach((toggle) => {
             toggle.addEventListener('click', () => {
-                const expanded = item.classList.toggle('is-expanded');
+                const chunk = toggle.closest('.evidence-chunk');
+                if (!chunk) return;
+                const text = chunk.querySelector('.evidence-text');
+                if (!text) return;
+
+                const expanded = chunk.classList.toggle('is-expanded');
                 text.classList.toggle('evidence-text-collapsed', !expanded);
                 toggle.textContent = expanded ? 'Show less' : 'Show more';
                 toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');

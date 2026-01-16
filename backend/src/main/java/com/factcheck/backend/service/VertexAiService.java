@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,9 +64,11 @@ public class VertexAiService {
                 .map(this::formatEvidenceForFactcheck)
                 .collect(Collectors.joining("\n\n---\n\n"));
 
+        String today = LocalDate.now(ZoneOffset.UTC).toString();
         return template
                 .replace("{{CLAIM}}", claim)
-                .replace("{{EVIDENCE}}", evidenceText);
+                .replace("{{EVIDENCE}}", evidenceText)
+                .replace("{{TODAY}}", today);
     }
 
     public String analyzeBias(String claim, List<ArticleDto> evidence, String verdict) {
@@ -141,7 +146,7 @@ public class VertexAiService {
         String evidenceText = (evidence == null || evidence.isEmpty())
                 ? "(no evidence found)"
                 : evidence.stream()
-                .map(a -> a.title() + " | " + a.source() + " | " + a.content())
+                .map(a -> formatEvidenceLine(a, false))
                 .collect(Collectors.joining("\n\n---\n\n"));
 
         return template
@@ -153,19 +158,32 @@ public class VertexAiService {
     }
 
     private String formatEvidenceForFactcheck(ArticleDto article) {
-        String mbfc = buildMbfcInfo(article, false);
-        if (mbfc == null) {
-            return article.title() + " | " + article.content();
-        }
-        return article.title() + " | " + mbfc + " | " + article.content();
+        return formatEvidenceLine(article, false);
     }
 
     private String formatEvidenceForBias(ArticleDto article) {
-        String mbfc = buildMbfcInfo(article, true);
-        if (mbfc == null) {
-            return article.title() + " | " + article.source() + " | " + article.content();
+        return formatEvidenceLine(article, true);
+    }
+
+    private String formatEvidenceLine(ArticleDto article, boolean includeBias) {
+        List<String> parts = new ArrayList<>();
+        if (isNotBlank(article.title())) {
+            parts.add(article.title());
         }
-        return article.title() + " | " + article.source() + " | " + mbfc + " | " + article.content();
+        if (isNotBlank(article.source())) {
+            parts.add("source=" + article.source());
+        }
+        if (article.publishedAt() != null) {
+            parts.add("published=" + article.publishedAt().toLocalDate());
+        }
+        String mbfc = buildMbfcInfo(article, includeBias);
+        if (mbfc != null) {
+            parts.add(mbfc);
+        }
+        if (isNotBlank(article.content())) {
+            parts.add(article.content());
+        }
+        return String.join(" | ", parts);
     }
 
     private String buildMbfcInfo(ArticleDto article, boolean includeBias) {

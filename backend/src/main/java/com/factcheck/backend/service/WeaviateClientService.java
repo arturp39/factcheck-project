@@ -35,10 +35,12 @@ public class WeaviateClientService {
             .build();
 
     public record EvidenceChunk(
+            Long articleId,
             String title,
             String content,
             String source,
             LocalDateTime publishedAt,
+            String articleUrl,
             String mbfcBias,
             String mbfcFactualReporting,
             String mbfcCredibility
@@ -146,6 +148,8 @@ public class WeaviateClientService {
      * - text
      * - articleTitle
      * - sourceName
+     * - articleId
+     * - articleUrl
      * - publishedDate
      * - _additional { distance }
      */
@@ -166,6 +170,8 @@ public class WeaviateClientService {
                         " text" +
                         " articleTitle" +
                         " sourceName" +
+                        " articleId" +
+                        " articleUrl" +
                         " publishedDate" +
                         " mbfcBias" +
                         " mbfcFactualReporting" +
@@ -224,6 +230,14 @@ public class WeaviateClientService {
                     }
 
                     // Extract only the fields for ui
+                    Long articleId = null;
+                    if (n.hasNonNull("articleId")) {
+                        long rawId = n.path("articleId").asLong();
+                        if (rawId > 0) {
+                            articleId = rawId;
+                        }
+                    }
+                    String articleUrl = nullIfBlank(n.path("articleUrl").asText(null));
                     String title = n.path("articleTitle").asText("");
                     String content = n.path("text").asText("");
                     String source = n.path("sourceName").asText("");
@@ -242,10 +256,12 @@ public class WeaviateClientService {
                     String mbfcCredibility = nullIfBlank(n.path("mbfcCredibility").asText(null));
 
                     chunks.add(new EvidenceChunk(
+                            articleId,
                             title,
                             content,
                             source,
                             publishedAt,
+                            articleUrl,
                             mbfcBias,
                             mbfcFactualReporting,
                             mbfcCredibility

@@ -1,6 +1,7 @@
 package com.factcheck.backend.controller;
 
 import com.factcheck.backend.dto.ArticleDto;
+import com.factcheck.backend.security.CurrentUserService;
 import com.factcheck.backend.service.ClaimWorkflowService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +23,15 @@ class ClaimControllerTest {
     @Mock
     private ClaimWorkflowService claimWorkflowService;
 
+    @Mock
+    private CurrentUserService currentUserService;
+
     private ClaimController controller;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        controller = new ClaimController(claimWorkflowService);
+        controller = new ClaimController(claimWorkflowService, currentUserService);
     }
 
     @Test
@@ -36,7 +40,8 @@ class ClaimControllerTest {
 
         doThrow(new IllegalArgumentException("Claim must not be empty."))
                 .when(claimWorkflowService)
-                .verify(eq("   "), any());
+                .verify(eq("   "), any(), eq("user1"));
+        when(currentUserService.requireUsername()).thenReturn("user1");
 
         String view = controller.verify("   ", model);
 
@@ -51,7 +56,8 @@ class ClaimControllerTest {
 
         doThrow(new IllegalArgumentException("Claim is too long. Please keep it under 400 characters."))
                 .when(claimWorkflowService)
-                .verify(eq(longClaim), any());
+                .verify(eq(longClaim), any(), eq("user1"));
+        when(currentUserService.requireUsername()).thenReturn("user1");
 
         String view = controller.verify(longClaim, model);
 
@@ -71,6 +77,7 @@ class ClaimControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -82,7 +89,8 @@ class ClaimControllerTest {
                 "because",
                 List.of(article)
         );
-        when(claimWorkflowService.verify("The sky is blue", null)).thenReturn(result);
+        when(currentUserService.requireUsername()).thenReturn("user1");
+        when(claimWorkflowService.verify("The sky is blue", null, "user1")).thenReturn(result);
 
         String view = controller.verify("The sky is blue", model);
 
@@ -103,6 +111,7 @@ class ClaimControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -116,7 +125,9 @@ class ClaimControllerTest {
                 null,
                 List.of(article)
         );
-        when(claimWorkflowService.loadClaimContext(5L, null)).thenReturn(context);
+        when(currentUserService.requireUsername()).thenReturn("user1");
+        when(claimWorkflowService.loadClaimContext(5L, null, "user1", false)).thenReturn(context);
+        when(claimWorkflowService.listFollowups(5L, "user1", false)).thenReturn(List.of());
 
         Model model = new ExtendedModelMap();
         String view = controller.followup(5L, "  ", model);
@@ -137,6 +148,7 @@ class ClaimControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -151,7 +163,9 @@ class ClaimControllerTest {
                 "why?",
                 "answer here"
         );
-        when(claimWorkflowService.followup(6L, "why?", null)).thenReturn(result);
+        when(currentUserService.requireUsername()).thenReturn("user1");
+        when(claimWorkflowService.followup(6L, "why?", null, "user1", false)).thenReturn(result);
+        when(claimWorkflowService.listFollowups(6L, "user1", false)).thenReturn(List.of());
 
         Model model = new ExtendedModelMap();
         String view = controller.followup(6L, "why?", model);
@@ -171,6 +185,7 @@ class ClaimControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -182,7 +197,9 @@ class ClaimControllerTest {
                 "bias text",
                 List.of(article)
         );
-        when(claimWorkflowService.bias(9L, null)).thenReturn(result);
+        when(currentUserService.requireUsername()).thenReturn("user1");
+        when(claimWorkflowService.bias(9L, null, "user1", false)).thenReturn(result);
+        when(claimWorkflowService.listFollowups(9L, "user1", false)).thenReturn(List.of());
 
         Model model = new ExtendedModelMap();
         String view = controller.analyzeBias(9L, model);

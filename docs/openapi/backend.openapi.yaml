@@ -1,4 +1,4 @@
-openapi: 3.0.3
+﻿openapi: 3.0.3
 info:
   title: FactCheck Backend API
   version: "1.0.0"
@@ -8,8 +8,8 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
-  - url: https://api.factcheck.local
-    description: Default server
+  - url: https://factcheck-backend-804697237544.us-central1.run.app
+    description: Cloud Run backend
 security: []
 tags:
   - name: claims
@@ -255,19 +255,6 @@ components:
                 path: "/api/claims/verify"
                 correlationId: "abc-123"
   schemas:
-    Article:
-      type: object
-      properties:
-        title:
-          type: string
-        content:
-          type: string
-        source:
-          type: string
-        publishedAt:
-          type: string
-          format: date-time
-      required: [title, content, source]
     EvidenceItem:
       type: object
       properties:
@@ -486,3 +473,4 @@ components:
       properties:
         status:
           type: string
+

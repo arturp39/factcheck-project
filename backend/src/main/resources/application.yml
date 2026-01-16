@@ -58,6 +58,15 @@ app:
   restclient:
     connect-timeout-ms: 3000
     read-timeout-ms: 30000
+  security:
+    admin-name: ${APP_ADMIN_NAME:admin}
+    admin-password: ${APP_ADMIN_PASSWORD:admin}
+    jwt-secret: ${APP_JWT_SECRET:change_me_please_use_32_chars_min}
+    jwt-issuer: ${APP_JWT_ISSUER:factcheck-backend}
+    jwt-ttl-minutes: ${APP_JWT_TTL_MINUTES:120}
+    jwt-cookie-name: ${APP_JWT_COOKIE_NAME:factcheck_token}
+    jwt-cookie-secure: ${APP_JWT_COOKIE_SECURE:false}
+    jwt-cookie-same-site: ${APP_JWT_COOKIE_SAME_SITE:Strict}
 
 management:
   endpoints:

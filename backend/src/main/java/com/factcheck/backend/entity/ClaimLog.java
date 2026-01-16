@@ -17,6 +17,9 @@ public class ClaimLog {
     @Column(name = "claim_text", columnDefinition = "TEXT", nullable = false)
     private String claimText;
 
+    @Column(name = "owner_username", nullable = false)
+    private String ownerUsername;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

@@ -33,6 +33,8 @@ class WeaviateClientServiceTest {
                           "text": "Chunk1",
                           "articleTitle": "Title1",
                           "sourceName": "Source1",
+                          "articleId": 123,
+                          "articleUrl": "https://example.com/a1",
                           "publishedDate": "2024-01-02T03:04:05Z",
                           "mbfcBias": "left",
                           "mbfcFactualReporting": "mixed",
@@ -59,6 +61,8 @@ class WeaviateClientServiceTest {
         assertThat(c.title()).isEqualTo("Title1");
         assertThat(c.content()).isEqualTo("Chunk1");
         assertThat(c.source()).isEqualTo("Source1");
+        assertThat(c.articleId()).isEqualTo(123L);
+        assertThat(c.articleUrl()).isEqualTo("https://example.com/a1");
         assertThat(c.publishedAt()).isEqualTo(LocalDateTime.of(2024, 1, 2, 3, 4, 5));
         assertThat(c.mbfcBias()).isEqualTo("left");
         assertThat(c.mbfcFactualReporting()).isEqualTo("mixed");

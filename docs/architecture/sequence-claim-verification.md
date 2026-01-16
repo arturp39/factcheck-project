@@ -1,4 +1,4 @@
-# Sequence: Claim Verification
+﻿# Sequence: Claim Verification
 
 1) Client sends `POST /api/claims/verify` with claim text (optional `X-Correlation-Id`).
 2) Backend validates length, saves `claim_log` row.
@@ -9,3 +9,4 @@
 7) Response returns verdict, explanation, evidence, claimId, correlationId.
 8) Follow-up (`POST /api/claims/{id}/followup`) reuses stored verdict/explanation, re-queries evidence, calls Vertex for Q&A.
 9) Bias analysis (`POST /api/claims/{id}/bias`) reuses verdict + evidence, stores bias text.
+

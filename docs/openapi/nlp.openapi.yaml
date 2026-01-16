@@ -1,4 +1,4 @@
-openapi: 3.0.3
+﻿openapi: 3.0.3
 info:
   title: FactCheck NLP Service API
   version: "1.0.0"
@@ -7,8 +7,8 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 servers:
-  - url: https://nlp.factcheck.local
-    description: Default server
+  - url: https://factcheck-nlp-service-804697237544.us-central1.run.app
+    description: Cloud Run NLP
 security: []
 tags:
   - name: health
@@ -227,3 +227,4 @@ components:
             status: { type: string }
             model: { type: string }
         uptime: { type: integer }
+

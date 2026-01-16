@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +25,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public Object handleValidation(Exception ex, HttpServletRequest request, Model model) {
         return buildResponse(ex, request, model, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class})
+    public Object handleAccessDenied(Exception ex, HttpServletRequest request, Model model) {
+        return buildResponse(ex, request, model, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign in</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body class="page">
+
+<header class="header">
+    <div class="header-title">FactCheck Assistant</div>
+    <div class="header-subtitle">Sign in to continue.</div>
+</header>
+
+<main class="main">
+    <section class="card">
+        <h2 class="section-title">Sign in</h2>
+
+        <div th:if="${error}" class="alert alert-error" th:text="${error}">
+            Error message
+        </div>
+
+        <form action="#" th:action="@{/auth/login}" method="post" class="claim-form">
+            <label for="username" class="form-label">Username</label>
+            <input id="username" name="username" class="form-input" type="text" required>
+
+            <label for="password" class="form-label">Password</label>
+            <input id="password" name="password" class="form-input" type="password" required>
+
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary">Sign in</button>
+            </div>
+        </form>
+
+        <p class="muted" style="margin-top: 10px;">
+            No account yet? <a href="/register">Create one</a>
+        </p>
+    </section>
+</main>
+
+</body>
+</html>

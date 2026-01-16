@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Create account</title>
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body class="page">
+
+<header class="header">
+    <div class="header-title">FactCheck Assistant</div>
+    <div class="header-subtitle">Create an account to start fact-checking.</div>
+</header>
+
+<main class="main">
+    <section class="card">
+        <h2 class="section-title">Create account</h2>
+
+        <div th:if="${error}" class="alert alert-error" th:text="${error}">
+            Error message
+        </div>
+
+        <form action="#" th:action="@{/auth/register}" method="post" class="claim-form">
+            <label for="username" class="form-label">Username</label>
+            <input id="username" name="username" class="form-input" type="text" required>
+
+            <label for="password" class="form-label">Password</label>
+            <input id="password" name="password" class="form-input" type="password" required>
+
+            <div class="form-footer">
+                <button type="submit" class="btn btn-primary">Register</button>
+            </div>
+        </form>
+
+        <p class="muted" style="margin-top: 10px;">
+            Already have an account? <a href="/login">Sign in</a>
+        </p>
+    </section>
+</main>
+
+</body>
+</html>

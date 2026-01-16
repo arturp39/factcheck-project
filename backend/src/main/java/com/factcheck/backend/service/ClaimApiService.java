@@ -3,6 +3,7 @@ package com.factcheck.backend.service;
 import com.factcheck.backend.dto.*;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
+import com.factcheck.backend.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -16,11 +17,13 @@ public class ClaimApiService {
 
     private final ClaimService claimService;
     private final ClaimWorkflowService claimWorkflowService;
+    private final CurrentUserService currentUserService;
 
     private static final int EVIDENCE_SNIPPET_LIMIT = 400;
 
     public VerifyResponse verify(String claim, String correlationId) {
-        ClaimWorkflowService.VerifyResult result = claimWorkflowService.verify(claim, correlationId);
+        String ownerUsername = currentUserService.requireUsername();
+        ClaimWorkflowService.VerifyResult result = claimWorkflowService.verify(claim, correlationId, ownerUsername);
 
         return new VerifyResponse(
                 result.correlationId(),
@@ -34,6 +37,8 @@ public class ClaimApiService {
 
     public ClaimsPageResponse listClaims(int page, int size, String correlationId) {
         String cid = useCorrelationId(correlationId);
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
         if (page < 0) {
             throw new IllegalArgumentException("page must be >= 0");
         }
@@ -41,7 +46,7 @@ public class ClaimApiService {
             throw new IllegalArgumentException("size must be between 1 and 200");
         }
 
-        var result = claimService.listClaims(PageRequest.of(page, size));
+        var result = claimService.listClaims(PageRequest.of(page, size), ownerUsername, allowAdmin);
         List<ClaimSummary> items = result.getContent().stream()
                 .map(c -> new ClaimSummary(
                         c.getId(),
@@ -64,7 +69,9 @@ public class ClaimApiService {
 
     public ClaimResponse getClaim(Long claimId, String correlationId) {
         String cid = useCorrelationId(correlationId);
-        ClaimLog log = claimService.getClaim(claimId);
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
+        ClaimLog log = claimService.getClaim(claimId, ownerUsername, allowAdmin);
         return new ClaimResponse(
                 cid,
                 log.getId(),
@@ -78,7 +85,10 @@ public class ClaimApiService {
     }
 
     public EvidenceResponse getEvidence(Long claimId, String correlationId) {
-        ClaimWorkflowService.ClaimContext context = claimWorkflowService.loadClaimContext(claimId, correlationId);
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
+        ClaimWorkflowService.ClaimContext context =
+                claimWorkflowService.loadClaimContext(claimId, correlationId, ownerUsername, allowAdmin);
         return new EvidenceResponse(
                 context.correlationId(),
                 claimId,
@@ -88,8 +98,10 @@ public class ClaimApiService {
     }
 
     public ClaimHistoryResponse getHistory(Long claimId, String correlationId) {
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
         ClaimWorkflowService.ConversationHistory history =
-                claimWorkflowService.loadConversationHistory(claimId, correlationId);
+                claimWorkflowService.loadConversationHistory(claimId, correlationId, ownerUsername, allowAdmin);
         ClaimWorkflowService.ClaimContext context = history.context();
 
         return new ClaimHistoryResponse(
@@ -106,8 +118,10 @@ public class ClaimApiService {
     }
 
     public FollowupResponse followup(Long claimId, String question, String correlationId) {
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
         ClaimWorkflowService.FollowupResult result =
-                claimWorkflowService.followup(claimId, question, correlationId);
+                claimWorkflowService.followup(claimId, question, correlationId, ownerUsername, allowAdmin);
 
         return new FollowupResponse(
                 result.correlationId(),
@@ -123,7 +137,9 @@ public class ClaimApiService {
     }
 
     public BiasResponse bias(Long claimId, String correlationId) {
-        ClaimWorkflowService.BiasResult result = claimWorkflowService.bias(claimId, correlationId);
+        String ownerUsername = currentUserService.requireUsername();
+        boolean allowAdmin = currentUserService.isAdmin();
+        ClaimWorkflowService.BiasResult result = claimWorkflowService.bias(claimId, correlationId, ownerUsername, allowAdmin);
 
         return new BiasResponse(
                 result.correlationId(),

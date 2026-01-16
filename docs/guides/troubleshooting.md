@@ -1,4 +1,4 @@
-# Troubleshooting
+﻿# Troubleshooting
 
 Containers unhealthy
 - Check logs: `docker compose logs backend collector nlp weaviate postgres-backend postgres-collector`.
@@ -10,7 +10,7 @@ Vertex errors
 - For offline dev set `NLP_USE_FAKE_EMBEDDINGS=true` to avoid Vertex calls.
 
 Evidence search empty
-- Ensure collector ran at least once: `curl -X POST http://localhost:8081/ingestion/run`.
+- Ensure collector ran at least once: `curl -X POST https://factcheck-news-collector-804697237544.us-central1.run.app/ingestion/run`.
 - Check Weaviate distance threshold `WEAVIATE_MAX_DISTANCE`; if too low, raise slightly (e.g., 0.6) and reindex.
 
 DB migrations
@@ -18,3 +18,4 @@ DB migrations
 
 Correlation IDs
 - Missing IDs auto-generated; to trace across services include `-H "X-Correlation-Id: test-123"` in requests and search logs for that value.
+

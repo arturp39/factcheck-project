@@ -35,4 +35,14 @@ public class SourceAdminController {
     ) {
         return ResponseEntity.ok(sourceService.updateSource(id, request));
     }
+
+    @PostMapping("/{id}/disable")
+    public ResponseEntity<SourceResponse> disableSource(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(sourceService.setEnabled(id, false));
+    }
+
+    @PostMapping("/{id}/enable")
+    public ResponseEntity<SourceResponse> enableSource(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(sourceService.setEnabled(id, true));
+    }
 }

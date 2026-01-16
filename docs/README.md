@@ -1,4 +1,4 @@
-# FactCheck Docs
+﻿# FactCheck Docs
 
 - Local run: `guides/local-run.md`
 - Configuration: `guides/configuration.md`

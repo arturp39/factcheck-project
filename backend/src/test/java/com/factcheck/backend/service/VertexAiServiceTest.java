@@ -49,6 +49,7 @@ class VertexAiServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }

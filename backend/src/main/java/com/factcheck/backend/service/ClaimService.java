@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -25,6 +27,16 @@ public class ClaimService {
     private final NlpServiceClient nlpServiceClient;
     private final WeaviateClientService weaviateClientService;
     private final int searchTopK;
+    private static final Set<String> BAD_BIAS_TOKENS = Set.of(
+            "questionable",
+            "conspiracy",
+            "pseudoscience",
+            "satire"
+    );
+    private static final Set<String> BAD_FACTUAL_VALUES = Set.of(
+            "very low",
+            "low"
+    );
 
     public ClaimService(ClaimLogRepository claimRepo,
                         ClaimFollowupRepository followupRepo,
@@ -56,12 +68,14 @@ public class ClaimService {
             List<EvidenceChunk> chunks = weaviateClientService.parseEvidenceChunks(graphqlResponse);
 
             return chunks.stream()
+                    .filter(chunk -> !isBadSource(chunk))
                     .map(c -> new ArticleDto(
-                            null,
+                            c.articleId(),
                             c.title(),
                             c.content(),
                             c.source(),
                             c.publishedAt(),
+                            c.articleUrl(),
                             c.mbfcBias(),
                             c.mbfcFactualReporting(),
                             c.mbfcCredibility()
@@ -74,14 +88,16 @@ public class ClaimService {
         }
     }
 
-    public ClaimLog saveClaim(String claim) {
+    public ClaimLog saveClaim(String claim, String ownerUsername) {
+        String owner = requireOwner(ownerUsername);
         ClaimLog logEntity = new ClaimLog();
         logEntity.setClaimText(claim);
+        logEntity.setOwnerUsername(owner);
         return claimRepo.save(logEntity);
     }
 
-    public ParsedAnswer storeModelAnswer(Long claimId, String answer) {
-        ClaimLog logEntity = getClaim(claimId);
+    public ParsedAnswer storeModelAnswer(Long claimId, String answer, String ownerUsername, boolean allowAdmin) {
+        ClaimLog logEntity = getClaim(claimId, ownerUsername, allowAdmin);
         ParsedAnswer parsed = parseAnswer(answer);
 
         logEntity.setModelAnswer(parsed.rawAnswer());
@@ -92,14 +108,14 @@ public class ClaimService {
         return parsed;
     }
 
-    public void storeBiasAnalysis(Long claimId, String biasText) {
-        ClaimLog logEntity = getClaim(claimId);
+    public void storeBiasAnalysis(Long claimId, String biasText, String ownerUsername, boolean allowAdmin) {
+        ClaimLog logEntity = getClaim(claimId, ownerUsername, allowAdmin);
         logEntity.setBiasAnalysis(biasText);
         claimRepo.save(logEntity);
     }
 
-    public ClaimFollowup storeFollowup(Long claimId, String question, String answer) {
-        ClaimLog logEntity = getClaim(claimId);
+    public ClaimFollowup storeFollowup(Long claimId, String question, String answer, String ownerUsername, boolean allowAdmin) {
+        ClaimLog logEntity = getClaim(claimId, ownerUsername, allowAdmin);
         ClaimFollowup followup = new ClaimFollowup();
         followup.setClaim(logEntity);
         followup.setQuestion(question);
@@ -107,17 +123,29 @@ public class ClaimService {
         return followupRepo.save(followup);
     }
 
-    public List<ClaimFollowup> listFollowups(Long claimId) {
+    public List<ClaimFollowup> listFollowups(Long claimId, String ownerUsername, boolean allowAdmin) {
+        getClaim(claimId, ownerUsername, allowAdmin);
         return followupRepo.findByClaimIdOrderByCreatedAtAsc(claimId);
     }
 
-    public ClaimLog getClaim(Long id) {
-        return claimRepo.findById(id)
+    public ClaimLog getClaim(Long id, String ownerUsername, boolean allowAdmin) {
+        ClaimLog log = claimRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Claim not found: " + id));
+        if (!allowAdmin) {
+            String owner = requireOwner(ownerUsername);
+            if (!owner.equals(log.getOwnerUsername())) {
+                throw new AccessDeniedException("Claim does not belong to the current user.");
+            }
+        }
+        return log;
     }
 
-    public Page<ClaimLog> listClaims(Pageable pageable) {
-        return claimRepo.findAll(pageable);
+    public Page<ClaimLog> listClaims(Pageable pageable, String ownerUsername, boolean allowAdmin) {
+        if (allowAdmin) {
+            return claimRepo.findAll(pageable);
+        }
+        String owner = requireOwner(ownerUsername);
+        return claimRepo.findByOwnerUsername(owner, pageable);
     }
 
     private ParsedAnswer parseAnswer(String answer) {
@@ -156,4 +184,50 @@ public class ClaimService {
             String explanation,
             String rawAnswer
     ) {}
+
+    private boolean isBadSource(EvidenceChunk chunk) {
+        if (chunk == null) {
+            return false;
+        }
+        return isBadBias(chunk.mbfcBias())
+                || isBadFactual(chunk.mbfcFactualReporting())
+                || isBadFactual(chunk.mbfcCredibility());
+    }
+
+    private boolean isBadBias(String bias) {
+        if (bias == null || bias.isBlank()) {
+            return false;
+        }
+        String normalized = normalizeLabel(bias);
+        for (String token : BAD_BIAS_TOKENS) {
+            if (normalized.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isBadFactual(String label) {
+        if (label == null || label.isBlank()) {
+            return false;
+        }
+        String normalized = normalizeLabel(label);
+        return BAD_FACTUAL_VALUES.contains(normalized);
+    }
+
+    private String normalizeLabel(String value) {
+        String normalized = value.toLowerCase()
+                .replace('_', ' ')
+                .replace('-', ' ')
+                .replace('/', ' ')
+                .trim();
+        return normalized.replaceAll("\\s+", " ");
+    }
+
+    private String requireOwner(String ownerUsername) {
+        if (ownerUsername == null || ownerUsername.isBlank()) {
+            throw new IllegalArgumentException("Owner username must be provided.");
+        }
+        return ownerUsername;
+    }
 }

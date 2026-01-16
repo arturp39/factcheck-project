@@ -1,4 +1,4 @@
-# System Context
+﻿# System Context
 
 Actors
 - End user / frontend: submits claims, reads verdicts.
@@ -17,3 +17,4 @@ Flows
 
 Infrastructure
 - Docker Compose (`infra/docker-compose.yml`) with shared network `factcheck_net`, volumes `postgres_backend_data`, `postgres_collector_data`, `weaviate_data`.
+

@@ -22,15 +22,15 @@ public class ClaimWorkflowService {
     @Value("${app.claim.max-length:400}")
     private int claimMaxLength;
 
-    public VerifyResult verify(String claim, String correlationId) {
+    public VerifyResult verify(String claim, String correlationId, String ownerUsername) {
         String cid = useCorrelationId(correlationId);
         String normalized = normalize(claim);
         validateClaim(normalized);
 
-        ClaimLog saved = claimService.saveClaim(normalized);
+        ClaimLog saved = claimService.saveClaim(normalized, ownerUsername);
         List<ArticleDto> evidence = claimService.searchEvidence(normalized, cid);
         String aiResponse = vertexAiService.askModel(normalized, evidence);
-        ClaimService.ParsedAnswer parsed = claimService.storeModelAnswer(saved.getId(), aiResponse);
+        ClaimService.ParsedAnswer parsed = claimService.storeModelAnswer(saved.getId(), aiResponse, ownerUsername, false);
 
         return new VerifyResult(
                 cid,
@@ -42,14 +42,15 @@ public class ClaimWorkflowService {
         );
     }
 
-    public FollowupResult followup(Long claimId, String question, String correlationId) {
+    public FollowupResult followup(Long claimId, String question, String correlationId,
+                                   String ownerUsername, boolean allowAdmin) {
         String cid = useCorrelationId(correlationId);
         String normalizedQ = normalize(question);
         if (normalizedQ.isEmpty()) {
             throw new IllegalArgumentException("Follow-up question must not be empty.");
         }
 
-        ClaimLog logEntry = claimService.getClaim(claimId);
+        ClaimLog logEntry = claimService.getClaim(claimId, ownerUsername, allowAdmin);
         List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         String answer = vertexAiService.answerFollowUp(
@@ -60,7 +61,7 @@ public class ClaimWorkflowService {
                 normalizedQ
         );
 
-        claimService.storeFollowup(claimId, normalizedQ, answer);
+        claimService.storeFollowup(claimId, normalizedQ, answer, ownerUsername, allowAdmin);
 
         return new FollowupResult(
                 cid,
@@ -75,9 +76,9 @@ public class ClaimWorkflowService {
         );
     }
 
-    public BiasResult bias(Long claimId, String correlationId) {
+    public BiasResult bias(Long claimId, String correlationId, String ownerUsername, boolean allowAdmin) {
         String cid = useCorrelationId(correlationId);
-        ClaimLog logEntry = claimService.getClaim(claimId);
+        ClaimLog logEntry = claimService.getClaim(claimId, ownerUsername, allowAdmin);
         List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         String biasText = vertexAiService.analyzeBias(
@@ -86,7 +87,7 @@ public class ClaimWorkflowService {
                 logEntry.getVerdict()
         );
 
-        claimService.storeBiasAnalysis(claimId, biasText);
+        claimService.storeBiasAnalysis(claimId, biasText, ownerUsername, allowAdmin);
 
         return new BiasResult(
                 cid,
@@ -98,9 +99,10 @@ public class ClaimWorkflowService {
         );
     }
 
-    public ClaimContext loadClaimContext(Long claimId, String correlationId) {
+    public ClaimContext loadClaimContext(Long claimId, String correlationId,
+                                         String ownerUsername, boolean allowAdmin) {
         String cid = useCorrelationId(correlationId);
-        ClaimLog logEntry = claimService.getClaim(claimId);
+        ClaimLog logEntry = claimService.getClaim(claimId, ownerUsername, allowAdmin);
         List<ArticleDto> evidence = claimService.searchEvidence(logEntry.getClaimText(), cid);
 
         return new ClaimContext(
@@ -115,21 +117,24 @@ public class ClaimWorkflowService {
         );
     }
 
-    public ConversationHistory loadConversationHistory(Long claimId, String correlationId) {
-        ClaimContext context = loadClaimContext(claimId, correlationId);
-        List<ClaimFollowup> followups = claimService.listFollowups(claimId);
+    public ConversationHistory loadConversationHistory(Long claimId, String correlationId,
+                                                       String ownerUsername, boolean allowAdmin) {
+        ClaimContext context = loadClaimContext(claimId, correlationId, ownerUsername, allowAdmin);
+        List<ClaimFollowup> followups = claimService.listFollowups(claimId, ownerUsername, allowAdmin);
         return new ConversationHistory(context, followups);
     }
 
-    public List<ClaimFollowup> listFollowups(Long claimId) {
-        return claimService.listFollowups(claimId);
+    public List<ClaimFollowup> listFollowups(Long claimId, String ownerUsername, boolean allowAdmin) {
+        return claimService.listFollowups(claimId, ownerUsername, allowAdmin);
     }
 
-    public List<ClaimLog> listRecentClaims(int limit) {
+    public List<ClaimLog> listRecentClaims(int limit, String ownerUsername, boolean allowAdmin) {
         if (limit < 1) {
             return List.of();
         }
-        return claimService.listClaims(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt")))
+        return claimService.listClaims(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt")),
+                        ownerUsername,
+                        allowAdmin)
                 .getContent();
     }
 

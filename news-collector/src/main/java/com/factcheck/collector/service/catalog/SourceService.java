@@ -81,6 +81,14 @@ public class SourceService {
         return saveEndpoint(endpoint, endpoint.getDisplayName());
     }
 
+    @Transactional
+    public SourceResponse setEnabled(Long id, boolean enabled) {
+        SourceEndpoint endpoint = sourceEndpointRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Source endpoint not found: " + id));
+        endpoint.setEnabled(enabled);
+        return saveEndpoint(endpoint, endpoint.getDisplayName());
+    }
+
     private SourceResponse saveEndpoint(SourceEndpoint endpoint, String nameForError) {
         try {
             return toResponse(sourceEndpointRepository.save(endpoint));

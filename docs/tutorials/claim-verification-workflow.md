@@ -1,4 +1,4 @@
-# Tutorial: Verify a Claim and Ask Follow-ups
+﻿# Tutorial: Verify a Claim and Ask Follow-ups
 
 Goal: walk through verifying a claim, inspecting evidence, and asking a follow-up question.
 
@@ -9,7 +9,7 @@ Prerequisites
 Steps
 1) Verify a claim  
    ```bash
-   curl -s -X POST http://localhost:8080/api/claims/verify \
+   curl -s -X POST https://factcheck-backend-804697237544.us-central1.run.app/api/claims/verify \
      -H "Content-Type: application/json" \
      -H "X-Correlation-Id: demo-123" \
      -d '{"claim":"The Moon has no gravity."}'
@@ -18,24 +18,24 @@ Steps
 
 2) Fetch stored claim  
    ```bash
-   curl -s http://localhost:8080/api/claims/{CLAIM_ID}
+   curl -s https://factcheck-backend-804697237544.us-central1.run.app/api/claims/{CLAIM_ID}
    ```
 
 3) Re-run evidence search (optional)  
    ```bash
-   curl -s http://localhost:8080/api/claims/{CLAIM_ID}/evidence
+   curl -s https://factcheck-backend-804697237544.us-central1.run.app/api/claims/{CLAIM_ID}/evidence
    ```
 
 4) Ask a follow-up  
    ```bash
-   curl -s -X POST http://localhost:8080/api/claims/{CLAIM_ID}/followup \
+   curl -s -X POST https://factcheck-backend-804697237544.us-central1.run.app/api/claims/{CLAIM_ID}/followup \
      -H "Content-Type: application/json" \
      -d '{"question":"What sources support this verdict?"}'
    ```
 
 5) Run bias analysis  
    ```bash
-   curl -s -X POST http://localhost:8080/api/claims/{CLAIM_ID}/bias
+   curl -s -X POST https://factcheck-backend-804697237544.us-central1.run.app/api/claims/{CLAIM_ID}/bias
    ```
 
 Edge cases
