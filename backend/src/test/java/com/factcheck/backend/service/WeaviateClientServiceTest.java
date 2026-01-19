@@ -230,12 +230,10 @@ class WeaviateClientServiceTest {
 
     private static class TestServer {
         private final com.sun.net.httpserver.HttpServer server;
-        private final AtomicReference<String> capturedBody;
         private final AtomicReference<String> capturedApiKey = new AtomicReference<>();
         private final AtomicReference<String> capturedCorrelation = new AtomicReference<>();
 
         TestServer(String path, int status, String body, AtomicReference<String> capturedBody) throws IOException {
-            this.capturedBody = capturedBody;
             this.server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress(0), 0);
             this.server.createContext(path, exchange -> {
                 byte[] bytes = exchange.getRequestBody().readAllBytes();

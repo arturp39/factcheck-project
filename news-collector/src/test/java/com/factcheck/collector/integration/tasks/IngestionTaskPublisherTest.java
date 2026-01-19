@@ -69,7 +69,7 @@ class IngestionTaskPublisherTest {
         setField(publisher, "accessTokenOverride", "override-token");
         setField(publisher, "serviceAccountEmail", "svc@example.com");
 
-        HttpResponse<String> ok = mock(HttpResponse.class);
+        HttpResponse<String> ok = mockResponse();
         when(ok.statusCode()).thenReturn(200);
         when(ok.body()).thenReturn("{\"ok\":true}");
 
@@ -89,11 +89,11 @@ class IngestionTaskPublisherTest {
 
     @Test
     void enqueueFetchesMetadataTokenOnceAndCachesIt() throws Exception {
-        HttpResponse<String> metadataResp = mock(HttpResponse.class);
+        HttpResponse<String> metadataResp = mockResponse();
         when(metadataResp.statusCode()).thenReturn(200);
         when(metadataResp.body()).thenReturn("{\"access_token\":\"abc\",\"expires_in\":3600}");
 
-        HttpResponse<String> enqueueResp = mock(HttpResponse.class);
+        HttpResponse<String> enqueueResp = mockResponse();
         when(enqueueResp.statusCode()).thenReturn(200);
         when(enqueueResp.body()).thenReturn("{\"ok\":true}");
 
@@ -137,7 +137,7 @@ class IngestionTaskPublisherTest {
     void enqueueWrapsNon2xxAsIllegalStateException() throws Exception {
         setField(publisher, "accessTokenOverride", "override-token");
 
-        HttpResponse<String> resp = mock(HttpResponse.class);
+        HttpResponse<String> resp = mockResponse();
         when(resp.statusCode()).thenReturn(500);
         when(resp.body()).thenReturn("nope");
 
@@ -154,6 +154,11 @@ class IngestionTaskPublisherTest {
 
     private static HttpResponse.BodyHandler<String> anyStringBodyHandler() {
         return ArgumentMatchers.any();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static HttpResponse<String> mockResponse() {
+        return (HttpResponse<String>) mock(HttpResponse.class);
     }
 
     private static void setField(Object target, String fieldName, Object value) {

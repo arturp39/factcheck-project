@@ -38,7 +38,7 @@ class VertexEmbeddingServiceTest {
                 }
                 """;
 
-        HttpResponse<String> httpResp = mock(HttpResponse.class);
+        HttpResponse<String> httpResp = mockResponse();
         when(httpResp.statusCode()).thenReturn(200);
         when(httpResp.body()).thenReturn(json);
 
@@ -54,7 +54,7 @@ class VertexEmbeddingServiceTest {
     void embedText_throwsOnNon2xxStatus() throws Exception {
         when(authHelper.embeddingEndpoint()).thenReturn("https://example.com/embed");
 
-        HttpResponse<String> httpResp = mock(HttpResponse.class);
+        HttpResponse<String> httpResp = mockResponse();
         when(httpResp.statusCode()).thenReturn(500);
         when(httpResp.body()).thenReturn("error");
 
@@ -82,7 +82,7 @@ class VertexEmbeddingServiceTest {
                 }
                 """;
 
-        HttpResponse<String> httpResp = mock(HttpResponse.class);
+        HttpResponse<String> httpResp = mockResponse();
         when(httpResp.statusCode()).thenReturn(200);
         when(httpResp.body()).thenReturn(json);
 
@@ -104,7 +104,7 @@ class VertexEmbeddingServiceTest {
                 }
                 """;
 
-        HttpResponse<String> httpResp = mock(HttpResponse.class);
+        HttpResponse<String> httpResp = mockResponse();
         when(httpResp.statusCode()).thenReturn(200);
         when(httpResp.body()).thenReturn(json);
         when(vertexApiClient.postJson(anyString(), anyString())).thenReturn(httpResp);
@@ -112,5 +112,10 @@ class VertexEmbeddingServiceTest {
         assertThatThrownBy(() -> embeddingService.embedText("text"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("No predictions field in embedding response");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static HttpResponse<String> mockResponse() {
+        return (HttpResponse<String>) mock(HttpResponse.class);
     }
 }

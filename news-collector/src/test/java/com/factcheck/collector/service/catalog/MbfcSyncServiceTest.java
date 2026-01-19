@@ -16,8 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -78,12 +76,6 @@ class MbfcSyncServiceTest {
                 .name("Montreal Gazette")
                 .websiteUrl("https://montrealgazette.com")
                 .build();
-        Publisher existing = Publisher.builder()
-                .id(3L)
-                .name("Existing")
-                .mbfcSource(sourceOne)
-                .build();
-
         when(publisherRepository.findAllByMbfcSourceIsNull()).thenReturn(List.of(byDomainOne, byDomain));
 
         MbfcSyncService.MbfcSyncResult result = mbfcSyncService.syncAndMap();

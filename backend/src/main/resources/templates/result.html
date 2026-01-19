@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>FactCheck Result</title>
@@ -99,7 +99,9 @@
             <div class="assistant-section">
                 <h3 class="assistant-section-title">Ask a follow-up question</h3>
                 <form th:if="${claimId}" th:action="@{'/followup/' + ${claimId}}" method="post" class="claim-form">
-                    <textarea name="question"
+                    <label class="form-label" for="followup-question">Follow-up question</label>
+                    <textarea id="followup-question"
+                              name="question"
                               class="form-textarea"
                               placeholder="Example: Are the sources mostly from one country?"></textarea>
                     <div class="form-footer">
@@ -165,7 +167,7 @@
                             Source name
                         </span>
                         <span th:if="${e.publishedAt != null}"
-                              th:text="'Published: ' + #temporals.format(e.publishedAt, 'yyyy-MM-dd')">
+                              th:text="|Published: ${#temporals.format(e.publishedAt, 'yyyy-MM-dd')}|">
                             Published: date
                         </span>
                         <span th:if="${e.grouped}"

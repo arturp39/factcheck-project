@@ -56,7 +56,7 @@ class NlpServiceClientTest {
 
         assertThat(result.getSentences()).containsExactly("One.", "Two.");
 
-        ArgumentCaptor<HttpEntity<PreprocessRequest>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        ArgumentCaptor<HttpEntity<PreprocessRequest>> captor = httpEntityCaptor();
         verify(restTemplate).exchange(
                 eq("http://nlp-service/preprocess"),
                 eq(HttpMethod.POST),
@@ -185,8 +185,7 @@ class NlpServiceClientTest {
 
         client.preprocess("text", "   ");
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<HttpEntity<PreprocessRequest>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        ArgumentCaptor<HttpEntity<PreprocessRequest>> captor = httpEntityCaptor();
 
         verify(restTemplate).exchange(
                 eq("http://nlp-service/preprocess"),
@@ -284,8 +283,7 @@ class NlpServiceClientTest {
 
         client.embed(req);
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<HttpEntity<EmbedRequest>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        ArgumentCaptor<HttpEntity<EmbedRequest>> captor = httpEntityCaptor();
 
         verify(restTemplate).exchange(
                 eq("http://nlp-service/embed"),
@@ -296,5 +294,10 @@ class NlpServiceClientTest {
 
         HttpHeaders headers = captor.getValue().getHeaders();
         assertThat(headers.getFirst("X-Correlation-Id")).isNotBlank();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> ArgumentCaptor<HttpEntity<T>> httpEntityCaptor() {
+        return (ArgumentCaptor<HttpEntity<T>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(HttpEntity.class);
     }
 }
