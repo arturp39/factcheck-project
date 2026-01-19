@@ -14,7 +14,7 @@ We rely on Vertex AI and cloud hosting; deployments must stay env-driven and rep
 - Use **Cloud SQL for PostgreSQL** for both backend and collector databases; connections via env-driven JDBC URLs.
 - Host **Weaviate** on a GCP VM (Docker) to keep vector search close to Cloud Run while retaining self-hosted control.
 - Schedule ingestion runs via **Cloud Scheduler** hitting `/ingestion/run` on the collector (no in-app scheduler; Cloud Run is request-driven).
-- Use **Vertex AI** for embeddings (`text-embedding-004`) and generation (`gemini-2.5-flash`), with credentials provided via env (`VERTEX_*`).
+- Use **Vertex AI** for embeddings (`gemini-embedding-001`) and generation (`gemini-2.5-flash`), with credentials provided via env (`VERTEX_*`).
 - Keep all endpoints configurable (Cloud SQL, Weaviate, Vertex) via environment variables managed per environment.
 
 ### Alternatives Considered

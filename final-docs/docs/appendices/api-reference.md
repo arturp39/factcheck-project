@@ -142,8 +142,8 @@ Paginated list of ingestion logs.
 ### GET /admin/ingestion/runs/{id}
 Run details with status.
 
-### POST /admin/ingestion/runs/{id}/abort
-Abort a running ingestion.
+### POST /admin/ingestion/runs/abort-active
+Abort the latest running ingestion.
 
 ### Source Catalog APIs
 - GET /admin/newsapi/sources, POST /admin/newsapi/sources/sync

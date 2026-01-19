@@ -28,7 +28,7 @@ app = FastAPI(
     version=settings.service_version,
     description=(
         "Preprocessing + embedding microservice for FactCheck project. "
-        "Uses Vertex AI embeddings (text-embedding-004) by default, "
+        "Uses Vertex AI embeddings (gemini-embedding-001) by default, "
         "with correlation ID aware logging and Prometheus metrics."
     ),
 )

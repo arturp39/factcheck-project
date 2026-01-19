@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 public class ArticleSearchService {
 
     private final WeaviateIndexingService weaviateIndexingService;
-    @Value("${search.embedding-dimension:768}")
+    @Value("${search.embedding-dimension:3072}")
     private int embeddingDimension;
 
     public SearchResponse search(SearchRequest request, String correlationId) {

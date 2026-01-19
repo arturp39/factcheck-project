@@ -134,13 +134,12 @@ paths:
                 $ref: '#/components/schemas/IngestionRunDetailResponse'
         "400":
           $ref: '#/components/responses/BadRequest'
-  /admin/ingestion/runs/{id}/abort:
+  /admin/ingestion/runs/abort-active:
     post:
       tags: [ingestion]
-      summary: Abort an ingestion run
-      operationId: abortIngestionRun
+      summary: Abort the latest running ingestion
+      operationId: abortActiveIngestionRun
       parameters:
-        - $ref: '#/components/parameters/RunId'
         - in: query
           name: reason
           required: false
@@ -153,6 +152,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IngestionRunDetailResponse'
+        "404":
+          description: No running ingestion found
         "400":
           $ref: '#/components/responses/BadRequest'
   /admin/sources:
@@ -549,7 +550,7 @@ components:
       properties:
         embedding:
           type: array
-          description: Embedding vector; length must equal search.embedding-dimension (default 768).
+          description: Embedding vector; length must equal search.embedding-dimension (default 3072).
           items:
             type: number
             format: float

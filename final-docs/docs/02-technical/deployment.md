@@ -9,7 +9,7 @@
 Cloud Run: backend, news-collector, nlp-service
 Cloud SQL: Postgres (backend DB), Postgres (collector DB)
 GCE VM: Weaviate in Docker
-Vertex AI: Gemini + text-embedding-004
+Vertex AI: Gemini + gemini-embedding-001
 External APIs: NewsAPI, MBFC (RapidAPI)
 Cloud Scheduler: triggers /ingestion/run on a schedule (no in-app scheduler in Cloud Run)
 `

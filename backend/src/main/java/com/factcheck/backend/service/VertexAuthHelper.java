@@ -44,7 +44,7 @@ public class VertexAuthHelper {
                 props.getLocation(),
                 props.getProjectId(),
                 props.getLocation(),
-                "text-embedding-004"
+                "gemini-embedding-001"
         );
         log.debug("Embedding endpoint={}", endpoint);
         return endpoint;

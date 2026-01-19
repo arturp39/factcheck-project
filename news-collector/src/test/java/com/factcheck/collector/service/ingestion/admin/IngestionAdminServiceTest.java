@@ -107,4 +107,33 @@ class IngestionAdminServiceTest {
         verify(ingestionLogRepository).failPendingLogsForRun(10L, "stop now");
         verify(ingestionRunRepository).save(any(IngestionRun.class));
     }
+
+    @Test
+    void abortActiveRun_returnsEmptyWhenNoRunningRun() {
+        when(ingestionRunRepository.findTopByStatusOrderByStartedAtDesc(IngestionRunStatus.RUNNING))
+                .thenReturn(Optional.empty());
+
+        Optional<IngestionRun> result = service.abortActiveRun(null);
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(ingestionLogRepository);
+    }
+
+    @Test
+    void abortActiveRun_abortsLatestRunningRun() {
+        IngestionRun run = IngestionRun.builder()
+                .id(42L)
+                .status(IngestionRunStatus.RUNNING)
+                .build();
+
+        when(ingestionRunRepository.findTopByStatusOrderByStartedAtDesc(IngestionRunStatus.RUNNING))
+                .thenReturn(Optional.of(run));
+        when(ingestionLogRepository.failPendingLogsForRun(42L, "Aborted by admin request")).thenReturn(2);
+
+        Optional<IngestionRun> result = service.abortActiveRun(" ");
+
+        assertThat(result).contains(run);
+        verify(ingestionRunRepository).save(run);
+        verify(ingestionLogRepository).failPendingLogsForRun(42L, "Aborted by admin request");
+    }
 }

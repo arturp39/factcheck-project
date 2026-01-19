@@ -58,7 +58,7 @@ crawler:
   user-agent: FactCheckCollector/1.0 (+https://example.com)
 
 search:
-  embedding-dimension: 768
+  embedding-dimension: ${SEARCH_EMBEDDING_DIMENSION:3072}
 
 newsapi:
   api-key: ${NEWSAPI_API_KEY:}

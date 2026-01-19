@@ -13,8 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
-
-import static org.mockito.Mockito.doNothing;
+import java.util.Optional;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -85,12 +84,25 @@ class IngestionAdminControllerTest {
                 "cid-z"
         );
 
-        doNothing().when(ingestionAdminService).abortRun(9L, null);
+        when(ingestionAdminService.abortActiveRun(null))
+                .thenReturn(Optional.of(com.factcheck.collector.domain.entity.IngestionRun.builder()
+                        .id(9L)
+                        .status(com.factcheck.collector.domain.enums.IngestionRunStatus.RUNNING)
+                        .correlationId(java.util.UUID.randomUUID())
+                        .build()));
         when(ingestionQueryService.getRun(9L)).thenReturn(run);
 
-        mockMvc.perform(post("/admin/ingestion/runs/{id}/abort", 9L))
+        mockMvc.perform(post("/admin/ingestion/runs/abort-active"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(9L))
                 .andExpect(jsonPath("$.status").value("FAILED"));
+    }
+
+    @Test
+    void abortRun_returnsNotFoundWhenNoActiveRun() throws Exception {
+        when(ingestionAdminService.abortActiveRun(null)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/admin/ingestion/runs/abort-active"))
+                .andExpect(status().isNotFound());
     }
 }

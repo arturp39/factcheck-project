@@ -27,7 +27,7 @@ class Settings:
     port: int = int(os.getenv("NLP_PORT", "8000"))
 
     # Embedding configuration
-    embedding_dim: int = int(os.getenv("NLP_EMBEDDING_DIM", "768"))
+    embedding_dim: int = int(os.getenv("NLP_EMBEDDING_DIM", "3072"))
 
     # Safety limits for requests
     max_text_length: int = int(os.getenv("NLP_MAX_TEXT_LENGTH", "50000"))
@@ -48,7 +48,7 @@ class Settings:
     # Vertex AI configuration
     vertex_project_id: str = os.getenv("VERTEX_PROJECT_ID")
     vertex_location: str = os.getenv("VERTEX_LOCATION", "us-central1")
-    vertex_model: str = os.getenv("NLP_VERTEX_MODEL", "text-embedding-004")
+    vertex_model: str = os.getenv("NLP_VERTEX_MODEL", "gemini-embedding-001")
     vertex_task_type: str = os.getenv("NLP_VERTEX_TASK_TYPE", "RETRIEVAL_DOCUMENT")
     vertex_timeout_seconds: int = int(os.getenv("NLP_VERTEX_TIMEOUT_SECONDS", "30"))
     vertex_internal_batch_size: int = int(os.getenv("NLP_VERTEX_BATCH_SIZE", "5"))

@@ -48,7 +48,7 @@ Collector
     -H "Content-Type: application/json" \
     -d '{"embedding":[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08], "limit":3, "minScore":0.7}'
   ```
-  Note: embedding length must match `SEARCH_EMBEDDING_DIMENSION` (default 768).
+  Note: embedding length must match `SEARCH_EMBEDDING_DIMENSION` (default 3072).
 
 NLP
 - Health:

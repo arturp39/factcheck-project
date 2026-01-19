@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -27,9 +28,24 @@ public class IngestionAdminService {
 
         IngestionRun run = ingestionRunRepository.findById(runId)
                 .orElseThrow(() -> new IllegalArgumentException("Ingestion run not found: " + runId));
+        abortRunInternal(run, reason);
+    }
 
+    @Transactional
+    public Optional<IngestionRun> abortActiveRun(String reason) {
+        Optional<IngestionRun> active =
+                ingestionRunRepository.findTopByStatusOrderByStartedAtDesc(IngestionRunStatus.RUNNING);
+        if (active.isEmpty()) {
+            return Optional.empty();
+        }
+        IngestionRun run = active.get();
+        abortRunInternal(run, reason);
+        return Optional.of(run);
+    }
+
+    private void abortRunInternal(IngestionRun run, String reason) {
         if (run.getStatus() != IngestionRunStatus.RUNNING) {
-            log.info("Abort ignored: ingestion run id={} status={}", runId, run.getStatus());
+            log.info("Abort ignored: ingestion run id={} status={}", run.getId(), run.getStatus());
             return;
         }
 
@@ -41,7 +57,7 @@ public class IngestionAdminService {
         run.setCompletedAt(Instant.now());
         ingestionRunRepository.save(run);
 
-        int logsUpdated = ingestionLogRepository.failPendingLogsForRun(runId, msg);
-        log.warn("Aborted ingestion run id={} pendingLogsUpdated={}", runId, logsUpdated);
+        int logsUpdated = ingestionLogRepository.failPendingLogsForRun(run.getId(), msg);
+        log.warn("Aborted ingestion run id={} pendingLogsUpdated={}", run.getId(), logsUpdated);
     }
 }

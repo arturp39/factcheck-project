@@ -36,7 +36,7 @@ paths:
                     version: "1.0.0"
                     vertexAI:
                       status: connected
-                      model: text-embedding-004
+                      model: gemini-embedding-001
                     uptime: 12345
         "400":
           $ref: '#/components/responses/BadRequest'
@@ -121,8 +121,8 @@ paths:
                     embeddings:
                       - [0.1, 0.2, 0.3]
                       - [0.0, 0.5, 0.9]
-                    dimension: 3
-                    model: text-embedding-004
+                    dimension: 3072
+                    model: gemini-embedding-001
                     processingTimeMs: 34
                     correlationId: demo-456
         "400":
@@ -169,8 +169,8 @@ paths:
                     embeddings:
                       - [0.1, 0.2, 0.3]
                       - [0.0, 0.5, 0.9]
-                    dimension: 3
-                    model: text-embedding-004
+                    dimension: 3072
+                    model: gemini-embedding-001
                     processingTimeMs: 22
                     correlationId: demo-789
         "400":

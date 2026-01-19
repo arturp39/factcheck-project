@@ -14,6 +14,8 @@ public interface IngestionRunRepository extends JpaRepository<IngestionRun, Long
 
     List<IngestionRun> findByStatusAndStartedAtBefore(IngestionRunStatus status, Instant cutoff);
 
+    java.util.Optional<IngestionRun> findTopByStatusOrderByStartedAtDesc(IngestionRunStatus status);
+
     @Modifying
     @Query(value = """
             UPDATE content.ingestion_runs r

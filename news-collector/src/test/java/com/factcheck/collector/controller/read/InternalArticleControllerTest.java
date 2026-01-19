@@ -54,7 +54,7 @@ class InternalArticleControllerTest {
                   "limit": 5,
                   "minScore": 0.7
                 }
-                """.formatted(",0.0".repeat(760)); // 768 dims total.
+                """.formatted(",0.0".repeat(3064)); // 3072 dims total.
 
         mockMvc.perform(post("/internal/articles/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +68,7 @@ class InternalArticleControllerTest {
 
         verify(articleSearchService).search(reqCaptor.capture(), cidCaptor.capture());
         assertThat(cidCaptor.getValue()).isEqualTo("cid-header");
-        assertThat(reqCaptor.getValue().embedding()).hasSize(768);
+        assertThat(reqCaptor.getValue().embedding()).hasSize(3072);
     }
 
     @Test

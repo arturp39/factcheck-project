@@ -38,12 +38,12 @@ public class IngestionAdminController {
         return ResponseEntity.ok(ingestionQueryService.getRun(runId));
     }
 
-    @PostMapping("/runs/{id}/abort")
-    public ResponseEntity<IngestionRunDetailResponse> abortRun(
-            @PathVariable("id") Long runId,
+    @PostMapping("/runs/abort-active")
+    public ResponseEntity<IngestionRunDetailResponse> abortActiveRun(
             @RequestParam(name = "reason", required = false) String reason
     ) {
-        ingestionAdminService.abortRun(runId, reason);
-        return ResponseEntity.ok(ingestionQueryService.getRun(runId));
+        return ingestionAdminService.abortActiveRun(reason)
+                .map(run -> ResponseEntity.ok(ingestionQueryService.getRun(run.getId())))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

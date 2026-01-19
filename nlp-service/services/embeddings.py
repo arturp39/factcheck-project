@@ -8,7 +8,10 @@ from typing import List, Dict, Optional
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import aiplatform
 from tenacity import retry, stop_after_attempt, wait_exponential
-from vertexai.language_models import TextEmbeddingModel
+try:
+    from vertexai.preview.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
+except ImportError:
+    from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
 
 from config import settings, get_logger
 from dedup.text_normalizer import normalize_text
@@ -17,7 +20,7 @@ logger = get_logger(__name__)
 
 # Vertex model lazy init
 _vertex_initialized = False
-_vertex_model: Optional[TextEmbeddingModel] = None
+_vertex_model: Optional[VertexTextEmbeddingModel] = None
 
 # Simple in-process rate limiter for Vertex calls
 _rate_lock = threading.Lock()
@@ -71,7 +74,7 @@ def _init_vertex_if_needed(correlation_id: Optional[str] = None) -> None:
         project=settings.vertex_project_id,
         location=settings.vertex_location,
     )
-    _vertex_model = TextEmbeddingModel.from_pretrained(settings.vertex_model)
+    _vertex_model = VertexTextEmbeddingModel.from_pretrained(settings.vertex_model)
     _vertex_initialized = True
 
     logger.info(
@@ -124,7 +127,16 @@ def _vertex_embed_batch(
 
     start = time.time()
     try:
-        response = _vertex_model.get_embeddings(texts)
+        task_type = (settings.vertex_task_type or "").strip()
+        if task_type:
+            task_enum = getattr(_vertex_model, "TaskType", None)
+            task_value = getattr(task_enum, task_type, task_type) if task_enum else task_type
+            try:
+                response = _vertex_model.get_embeddings(texts, task_type=task_value)
+            except TypeError:
+                response = _vertex_model.get_embeddings(texts)
+        else:
+            response = _vertex_model.get_embeddings(texts)
         vectors = [emb.values for emb in response]
         duration = int((time.time() - start) * 1000)
 

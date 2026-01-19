@@ -27,7 +27,7 @@
     </div>
 
     <!-- Claim bubble -->
-    <section class="chat-block">
+    <section class="chat-block" th:with="hasEvidence=${!#lists.isEmpty(evidenceViews)}">
         <div class="chat-label">You</div>
         <div class="chat-bubble chat-bubble-user">
             <p th:text="${claim}">Claim text</p>
@@ -73,7 +73,9 @@
                           th:action="@{'/bias/' + ${claimId}}"
                           method="post"
                           class="form-inline">
-                        <button type="submit" class="btn btn-secondary">
+                        <button type="submit"
+                                class="btn btn-secondary"
+                                th:disabled="${!hasEvidence}">
                             Re-analyze bias
                         </button>
                     </form>
@@ -88,7 +90,9 @@
                           th:action="@{'/bias/' + ${claimId}}"
                           method="post"
                           class="form-inline">
-                        <button type="submit" class="btn btn-secondary">
+                        <button type="submit"
+                                class="btn btn-secondary"
+                                th:disabled="${!hasEvidence}">
                             Analyze bias &amp; limitations
                         </button>
                     </form>
@@ -98,14 +102,22 @@
             <!-- Ask follow-up question -->
             <div class="assistant-section">
                 <h3 class="assistant-section-title">Ask a follow-up question</h3>
+                <p class="muted" th:if="${!hasEvidence}">
+                    Follow-ups are disabled until evidence is available.
+                </p>
                 <form th:if="${claimId}" th:action="@{'/followup/' + ${claimId}}" method="post" class="claim-form">
                     <label class="form-label" for="followup-question">Follow-up question</label>
                     <textarea id="followup-question"
                               name="question"
                               class="form-textarea"
+                              th:disabled="${!hasEvidence}"
                               placeholder="Example: Are the sources mostly from one country?"></textarea>
                     <div class="form-footer">
-                        <button type="submit" class="btn btn-primary">Ask</button>
+                        <button type="submit"
+                                class="btn btn-primary"
+                                th:disabled="${!hasEvidence}">
+                            Ask
+                        </button>
                     </div>
                 </form>
             </div>

@@ -24,9 +24,9 @@ Steps
    curl -s "http://localhost:8081/admin/ingestion/runs/{RUN_ID}"
    ```
 
-4) (Optional) Abort a run
+4) (Optional) Abort the active run
    ```bash
-   curl -s -X POST "http://localhost:8081/admin/ingestion/runs/{RUN_ID}/abort"
+   curl -s -X POST "http://localhost:8081/admin/ingestion/runs/abort-active"
    ```
 
 What to expect

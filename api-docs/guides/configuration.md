@@ -29,6 +29,6 @@ Correlation IDs
 Rate/size limits
 - Claim length: default 400 chars (`APP_CLAIM_MAX_LENGTH`).
 - Pagination: size 1-200.
-- Collector search: embedding dimension must match `SEARCH_EMBEDDING_DIMENSION` (default 768).
+- Collector search: embedding dimension must match `SEARCH_EMBEDDING_DIMENSION` (default 3072).
 - NLP limits: `NLP_MAX_TEXT_LENGTH`, `NLP_MAX_TEXTS_PER_REQUEST`, `NLP_MAX_TOTAL_CHARS`.
 
