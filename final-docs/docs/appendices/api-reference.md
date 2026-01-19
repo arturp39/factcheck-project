@@ -51,7 +51,7 @@ Content-Type: application/json
 
 ## Backend Endpoints (require JWT)
 
-Note: /api/** endpoints require the **ADMIN** role. USER accounts can access the UI routes but not the API endpoints unless promoted to ADMIN.
+Note: `/api/claims/**` is accessible to USER and ADMIN. Other `/api/**` endpoints (including Swagger) require ADMIN.
 
 ### POST /api/claims/verify
 Submit a claim and receive a verdict with evidence.
@@ -128,10 +128,10 @@ Generate bias analysis based on claim evidence.
 ---
 
 ## News Collector Endpoints (internal)
-These endpoints are intended for internal use and are not protected by app-level auth.
+These endpoints are intended for internal use and are not protected by app-level auth; restrict access via ingress/IAM.
 
 ### POST /ingestion/run
-Starts an ingestion run. Returns run ID and task count. 409 if a run is already active.
+Starts an ingestion run. Returns 202 Accepted with run ID and task count. 409 if a run is already active.
 
 ### POST /ingestion/task
 Handles a specific ingestion task (used by scheduler/worker). Returns 200 on success, 204 if the payload is invalid and ignored.
@@ -159,7 +159,7 @@ Abort a running ingestion.
 - GET /internal/articles/{id}/content (full text)
 
 ## NLP Service
-The NLP service has no app-level auth and is intended for internal access.
+The NLP service has no app-level auth and is intended for internal access. In production it can be protected with Cloud Run IAM; backend and collector include a Google-signed ID token when enabled.
 - POST /preprocess - sentence splitting
 - POST /embed - embeddings for texts
 - POST /embed-sentences - embeddings per sentence (used for semantic chunking)
@@ -173,6 +173,7 @@ The NLP service has no app-level auth and is intended for internal access.
 | 401 | Unauthorized | Missing/invalid credentials |
 | 403 | Forbidden | Access denied (e.g., not owner) |
 | 409 | Run already in progress | Ingestion run exists |
+| 429 | Too Many Requests | MBFC quota exceeded (collector) |
 | 500 | Internal Server Error | Upstream failure (Vertex/Weaviate/DB) |
 | 503 | Embedding generation failed | Vertex unavailable (NLP service) |
 

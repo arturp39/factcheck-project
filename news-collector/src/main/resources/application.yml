@@ -44,6 +44,9 @@ management:
 
 nlp-service:
   url: ${NLP_SERVICE_URL:http://localhost:8000}
+  auth:
+    enabled: ${NLP_SERVICE_AUTH_ENABLED:false}
+    audience: ${NLP_SERVICE_AUTH_AUDIENCE:}
 
 ingestion:
   run-timeout: PT6H

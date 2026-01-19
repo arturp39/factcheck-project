@@ -5,6 +5,7 @@ import com.factcheck.backend.integration.nlp.dto.EmbedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -16,6 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -27,12 +29,14 @@ class NlpServiceClientTest {
     private RestTemplate restTemplate;
     private MockRestServiceServer server;
     private NlpServiceClient client;
+    private NlpServiceAuthTokenProvider authTokenProvider;
 
     @BeforeEach
     void setup() {
         restTemplate = new RestTemplate();
         server = MockRestServiceServer.bindTo(restTemplate).build();
-        client = new NlpServiceClient(restTemplate);
+        authTokenProvider = Mockito.mock(NlpServiceAuthTokenProvider.class);
+        client = new NlpServiceClient(restTemplate, authTokenProvider);
         ReflectionTestUtils.setField(client, "baseUrl", "http://localhost");
     }
 
@@ -58,6 +62,31 @@ class NlpServiceClientTest {
         assertThat(response.getEmbeddings()).hasSize(1);
         assertThat(response.getEmbeddings().getFirst()).containsExactly(0.1, 0.2, 0.3);
         assertThat(response.getDimension()).isEqualTo(3);
+        server.verify();
+    }
+
+    @Test
+    void embed_addsBearerTokenWhenAuthEnabled() {
+        when(authTokenProvider.isEnabled()).thenReturn(true);
+        when(authTokenProvider.getIdTokenValue()).thenReturn("token-123");
+
+        String body = """
+                {
+                  "embeddings": [[0.1]],
+                  "dimension": 1,
+                  "model": "demo",
+                  "processingTimeMs": 1,
+                  "correlationId": "cid-123"
+                }
+                """;
+
+        server.expect(requestTo("http://localhost/embed"))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer token-123"))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        client.embed(List.of("hello"), "cid-123");
+
         server.verify();
     }
 
@@ -100,7 +129,7 @@ class NlpServiceClientTest {
         EmbedResponse response = new EmbedResponse();
         response.setEmbeddings(List.of(List.of()));
 
-        NlpServiceClient stubClient = new NlpServiceClient(restTemplate) {
+        NlpServiceClient stubClient = new NlpServiceClient(restTemplate, authTokenProvider) {
             @Override
             public EmbedResponse embed(List<String> texts, String correlationId) {
                 return response;
@@ -118,7 +147,7 @@ class NlpServiceClientTest {
         response.setEmbeddings(List.of(Arrays.asList(1.0, null, 3.0)));
         response.setDimension(3);
 
-        NlpServiceClient stubClient = new NlpServiceClient(restTemplate) {
+        NlpServiceClient stubClient = new NlpServiceClient(restTemplate, authTokenProvider) {
             @Override
             public EmbedResponse embed(List<String> texts, String correlationId) {
                 return response;

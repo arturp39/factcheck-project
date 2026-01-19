@@ -1,6 +1,6 @@
 ﻿# Sequence: Claim Verification
 
-1) Client sends `POST /api/claims/verify` with claim text (optional `X-Correlation-Id`).
+1) Client sends `POST /api/claims/verify` with claim text and `Authorization: Bearer <token>` (optional `X-Correlation-Id`).
 2) Backend validates length, saves `claim_log` row.
 3) Backend calls NLP `/embed` with claim -> receives vector.
 4) Backend queries Weaviate `ArticleChunk` via nearVector (limit = `app.search.top-k`, distance filter).

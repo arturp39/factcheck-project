@@ -45,6 +45,8 @@ Cloud Build YAMLs build container images per service and deploy to Cloud Run.
 | APP_JWT_SECRET | JWT signing secret | 32+ chars |
 | WEAVIATE_BASE_URL | Weaviate endpoint | http://weaviate:8082 |
 | NLP_SERVICE_URL | NLP service URL | http://nlp-service:8000 |
+| NLP_SERVICE_AUTH_ENABLED | Enable Cloud Run IAM auth for NLP | false |
+| NLP_SERVICE_AUTH_AUDIENCE | NLP Cloud Run URL (ID token audience) | https://factcheck-nlp-service-... |
 | VERTEX_PROJECT_ID | GCP project | my-project |
 | NEWSAPI_API_KEY / RAPIDAPI_KEY | External APIs | *** |
 

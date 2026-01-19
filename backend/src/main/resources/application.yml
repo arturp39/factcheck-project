@@ -43,12 +43,15 @@ weaviate:
 logging:
   level:
     root: INFO
-    com.example.demo: DEBUG
+    com.factcheck.backend: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%X{corrId}] %logger{36} - %msg%n"
 
 nlp-service:
   url: ${NLP_SERVICE_URL:http://localhost:8000}
+  auth:
+    enabled: ${NLP_SERVICE_AUTH_ENABLED:false}
+    audience: ${NLP_SERVICE_AUTH_AUDIENCE:}
 
 app:
   claim:
@@ -61,7 +64,7 @@ app:
   security:
     admin-name: ${APP_ADMIN_NAME:admin}
     admin-password: ${APP_ADMIN_PASSWORD:admin}
-    jwt-secret: ${APP_JWT_SECRET:change_me_please_use_32_chars_min}
+    jwt-secret: ${APP_JWT_SECRET}
     jwt-issuer: ${APP_JWT_ISSUER:factcheck-backend}
     jwt-ttl-minutes: ${APP_JWT_TTL_MINUTES:120}
     jwt-cookie-name: ${APP_JWT_COOKIE_NAME:factcheck_token}

@@ -15,9 +15,11 @@ Class: `ArticleChunk`
 
 Queries
 - Backend uses nearVector with distance filter (`weaviate.max-distance`, default 0.5) and limit `app.search.top-k` (default 5).
-- Fields requested: `text`, `articleTitle`, `sourceName`, `_additional { distance }`.
+- Backend fields requested: `text`, `articleTitle`, `sourceName`, `articleId`, `articleUrl`, `publishedDate`, `mbfcBias`, `mbfcFactualReporting`, `mbfcCredibility`, `_additional { distance }`.
+- Collector search uses nearVector with `limit`/`minScore`; fields requested: `text`, `articleId`, `articleUrl`, `articleTitle`, `sourceName`, `publishedDate`, `chunkIndex`, `_additional { distance }`.
 
 Inserts
 - Collector writes chunks via Weaviate HTTP `/v1/batch/objects` with provided vector.
-- Default vectorizer set to `none`; `X-API-KEY` used when configured.
+- Backend can insert manual chunks via `/v1/objects` (used for admin/manual tooling).
+- Default vectorizer set to `none`; backend sends `X-API-KEY` when configured (collector currently does not send it).
 

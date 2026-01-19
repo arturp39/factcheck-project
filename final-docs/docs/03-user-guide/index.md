@@ -64,5 +64,5 @@ This section provides instructions for end users on how to use the application.
 
 | Role | Permissions | Access Level |
 |------|-------------|--------------|
-| **USER** | Submit claims, view evidence, ask follow-ups, bias analysis | UI access |
-| **ADMIN** | All USER permissions plus access to `/api/**` and admin endpoints | UI + API |
+| **USER** | Submit claims, view evidence, ask follow-ups, bias analysis; API access to `/api/claims/**` | UI + limited API |
+| **ADMIN** | All USER permissions plus access to `/api/**` and admin endpoints | UI + full API |

@@ -18,9 +18,10 @@ import org.slf4j.MDC;
 
 import java.time.Instant;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -173,5 +174,69 @@ class ClaimApiControllerTest {
         assertThat(resp.getStatusCode().value()).isEqualTo(200);
         assertThat(resp.getBody()).isNotNull();
         assertThat(resp.getBody().biasAnalysis()).isEqualTo("bias text");
+    }
+
+    @Test
+    void verify_handlesNullRequestAndGeneratesCorrelationId() {
+        when(claimApiService.verify(
+                org.mockito.ArgumentMatchers.isNull(),
+                anyString()))
+                .thenAnswer(invocation -> new VerifyResponse(
+                        invocation.getArgument(1),
+                        1L,
+                        null,
+                        "unclear",
+                        "n/a",
+                        List.of()
+                ));
+
+        var resp = controller.verify(null);
+
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().correlationId()).isNotBlank();
+    }
+
+    @Test
+    void listClaims_generatesCorrelationIdWhenMdcBlank() {
+        MDC.put("corrId", " ");
+
+        when(claimApiService.listClaims(eq(0), eq(20), anyString()))
+                .thenAnswer(invocation -> new ClaimsPageResponse(
+                        invocation.getArgument(2),
+                        0,
+                        20,
+                        0,
+                        0,
+                        List.of()
+                ));
+
+        var resp = controller.listClaims(0, 20);
+
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().correlationId()).isNotBlank();
+    }
+
+    @Test
+    void followup_handlesNullRequestAndGeneratesCorrelationId() {
+        when(claimApiService.followup(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.isNull(),
+                anyString()))
+                .thenAnswer(invocation -> new FollowupResponse(
+                        invocation.getArgument(2),
+                        1L,
+                        "claim",
+                        "mixed",
+                        "expl",
+                        null,
+                        List.of(),
+                        null,
+                        "answer"
+                ));
+
+        var resp = controller.followup(1L, null);
+
+        assertThat(resp.getBody()).isNotNull();
+        assertThat(resp.getBody().correlationId()).isNotBlank();
     }
 }

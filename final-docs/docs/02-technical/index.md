@@ -57,7 +57,7 @@ Ingestion -> fetch sources -> preprocess/chunk
 | Aspect | Implementation |
 |--------|----------------|
 | **Authentication** | JWT login/register (UI cookie + API Bearer) |
-| **Authorization** | USER for UI, ADMIN for API/admin routes |
+| **Authorization** | USER for UI + `/api/claims/**`; ADMIN for other API/admin routes |
 | **Input Validation** | Claim length limits and DTO checks |
 | **Secrets Management** | Env vars for JWT, DB, and external services |
-| **Service-to-service auth** | None at app level; collector/NLP intended for internal access |
+| **Service-to-service auth** | Optional Cloud Run IAM: backend/collector send ID tokens to NLP when enabled |

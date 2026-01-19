@@ -137,6 +137,54 @@ paths:
                 provider-down:
                   value:
                     detail: "Embedding generation failed"
+  /embed-sentences:
+    post:
+      tags: [embeddings]
+      summary: Generate embeddings for sentences
+      operationId: nlpEmbedSentences
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SentenceEmbedRequest'
+            examples:
+              basic:
+                value:
+                  sentences:
+                    - "Sentence one."
+                    - "Sentence two."
+      responses:
+        "200":
+          description: Sentence embeddings vector output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentenceEmbedResponse'
+              examples:
+                ok:
+                  value:
+                    embeddings:
+                      - [0.1, 0.2, 0.3]
+                      - [0.0, 0.5, 0.9]
+                    dimension: 3
+                    model: text-embedding-004
+                    processingTimeMs: 22
+                    correlationId: demo-789
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "503":
+          description: Embedding provider unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FastApiError'
+              examples:
+                provider-down:
+                  value:
+                    detail: "Sentence embedding failed"
 components:
   parameters:
     CorrelationIdHeader:
@@ -227,4 +275,35 @@ components:
             status: { type: string }
             model: { type: string }
         uptime: { type: integer }
+    SentenceEmbedRequest:
+      type: object
+      required: [sentences]
+      properties:
+        sentences:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        correlationId:
+          type: string
+          nullable: true
+    SentenceEmbedResponse:
+      type: object
+      properties:
+        embeddings:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+              format: float
+        dimension:
+          type: integer
+        model:
+          type: string
+        processingTimeMs:
+          type: integer
+        correlationId:
+          type: string
+          nullable: true
 

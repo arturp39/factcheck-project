@@ -10,8 +10,8 @@
 Multiple consumers (UI, operators, potential integrations) need clear descriptions of backend and collector APIs, including Markdown and OpenAPI references.
 
 ### Decision
-- Document REST endpoints in Markdown stored in the docs folder (`final-docs/docs/appendices/api-reference.md` + top-level `docs/`) with request/response examples and status codes.
-- Maintain OpenAPI YAML specs in `docs/openapi/*.yaml` plus a short `docs/openapi/reference.md`.
+- Document REST endpoints in Markdown stored in the api-docs folder (`final-docs/docs/appendices/api-reference.md` + top-level `api-docs/`) with request/response examples and status codes.
+- Maintain OpenAPI YAML specs in `api-docs/openapi/*.yaml` plus a short `api-docs/openapi/reference.md`.
 - Include authentication details (JWT cookie for UI, Bearer token for API) and correlation headers.
 - Enable Springdoc OpenAPI for interactive docs while keeping Markdown as the primary narrative reference.
 
@@ -29,9 +29,9 @@ Multiple consumers (UI, operators, potential integrations) need clear descriptio
 ### Project Structure
 ```
 final-docs/docs/appendices/api-reference.md   # Primary endpoint documentation (backend + collector + NLP)
-docs/                                        # Additional API docs (if provided by user)
-docs/openapi/*.yaml                          # OpenAPI specs per service
-docs/openapi/reference.md                    # OpenAPI reference index
+api-docs/                                    # Additional API docs (if provided by user)
+api-docs/openapi/*.yaml                      # OpenAPI specs per service
+api-docs/openapi/reference.md                # OpenAPI reference index
 backend/controller/*                         # Claim and admin APIs
 news-collector/controller/*                   # Ingestion/admin/internal APIs
 nlp-service/main.py                           # NLP endpoints
@@ -46,7 +46,7 @@ nlp-service/main.py                           # NLP endpoints
 ### Requirements Checklist
 | # | Requirement | Status | Evidence |
 |---|-------------|--------|----------|
-| 1 | Document main APIs | Done | `final-docs/docs/appendices/api-reference.md`, `docs/` |
+| 1 | Document main APIs | Done | `final-docs/docs/appendices/api-reference.md`, `api-docs/` |
 | 2 | Include request/response examples | Done | Markdown examples in api-reference |
 | 3 | Auth requirements documented | Done | JWT/cookie details in api-reference |
 | 4 | Correlation header documented | Done | Mentioned in api-reference |

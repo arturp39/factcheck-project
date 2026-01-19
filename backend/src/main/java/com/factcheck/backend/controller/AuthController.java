@@ -5,6 +5,7 @@ import com.factcheck.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,7 +44,7 @@ public class AuthController {
             String token = authService.authenticate(username, password);
             setJwtCookie(response, token);
             return "redirect:/";
-        } catch (Exception e) {
+        } catch (AuthenticationException e) {
             model.addAttribute("error", "Invalid username or password.");
             return "login";
         }
@@ -59,8 +60,11 @@ public class AuthController {
             String token = authService.authenticate(username, password);
             setJwtCookie(response, token);
             return "redirect:/";
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
+            return "register";
+        } catch (AuthenticationException e) {
+            model.addAttribute("error", "Unable to sign in after registration.");
             return "register";
         }
     }

@@ -24,11 +24,13 @@ class NlpServiceClientTest {
 
     private RestTemplate restTemplate;
     private NlpServiceClient client;
+    private NlpServiceAuthTokenProvider authTokenProvider;
 
     @BeforeEach
     void setUp() throws Exception {
         restTemplate = mock(RestTemplate.class);
-        client = new NlpServiceClient(restTemplate);
+        authTokenProvider = mock(NlpServiceAuthTokenProvider.class);
+        client = new NlpServiceClient(restTemplate, authTokenProvider);
 
         Field f = NlpServiceClient.class.getDeclaredField("baseUrl");
         f.setAccessible(true);
@@ -103,6 +105,20 @@ class NlpServiceClientTest {
 
         assertThat(result.getEmbeddings()).hasSize(1);
         assertThat(result.getEmbeddings().getFirst()).containsExactly(0.1, 0.2);
+    }
+
+    @Test
+    void embed_whenRequestNull_throws() {
+        assertThatThrownBy(() -> client.embed(null))
+                .isInstanceOf(NlpServiceException.class)
+                .hasMessageContaining("request is null");
+    }
+
+    @Test
+    void embedSentences_whenRequestNull_throws() {
+        assertThatThrownBy(() -> client.embedSentences(null))
+                .isInstanceOf(NlpServiceException.class)
+                .hasMessageContaining("request is null");
     }
     @Test
     void preprocess_whenRestTemplateReturnsNullResponse_throws() {

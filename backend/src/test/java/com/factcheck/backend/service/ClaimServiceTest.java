@@ -13,6 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 import java.util.Optional;
@@ -218,6 +221,56 @@ class ClaimServiceTest {
         verify(claimFollowupRepository).save(captor.capture());
         assertThat(captor.getValue().getQuestion()).isEqualTo("q?");
         assertThat(captor.getValue().getAnswer()).isEqualTo("a!");
+    }
+
+    @Test
+    void saveClaim_rejectsBlankOwner() {
+        assertThrows(IllegalArgumentException.class, () -> claimService.saveClaim("claim", " "));
+    }
+
+    @Test
+    void getClaim_allowsOwner() {
+        when(claimLogRepository.findById(1L)).thenReturn(Optional.of(existingLog));
+
+        ClaimLog log = claimService.getClaim(1L, "user1", false);
+
+        assertThat(log).isSameAs(existingLog);
+    }
+
+    @Test
+    void getClaim_deniesWhenOwnerMismatch() {
+        when(claimLogRepository.findById(1L)).thenReturn(Optional.of(existingLog));
+
+        assertThrows(AccessDeniedException.class, () -> claimService.getClaim(1L, "other", false));
+    }
+
+    @Test
+    void getClaim_allowsAdmin() {
+        when(claimLogRepository.findById(1L)).thenReturn(Optional.of(existingLog));
+
+        ClaimLog log = claimService.getClaim(1L, "admin", true);
+
+        assertThat(log).isSameAs(existingLog);
+    }
+
+    @Test
+    void listClaims_returnsAllForAdmin() {
+        when(claimLogRepository.findAll(eq(PageRequest.of(0, 1))))
+                .thenReturn(new PageImpl<>(List.of(existingLog)));
+
+        var page = claimService.listClaims(PageRequest.of(0, 1), "user1", true);
+
+        assertThat(page.getContent()).hasSize(1);
+    }
+
+    @Test
+    void listClaims_filtersByOwnerWhenNotAdmin() {
+        when(claimLogRepository.findByOwnerUsername(eq("user1"), eq(PageRequest.of(0, 1))))
+                .thenReturn(new PageImpl<>(List.of(existingLog)));
+
+        var page = claimService.listClaims(PageRequest.of(0, 1), "user1", false);
+
+        assertThat(page.getContent()).hasSize(1);
     }
 
     @Test

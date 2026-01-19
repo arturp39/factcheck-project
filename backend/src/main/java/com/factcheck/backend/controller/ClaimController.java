@@ -25,6 +25,7 @@ public class ClaimController {
     private final CurrentUserService currentUserService;
     private static final int GROUPED_CHUNK_THRESHOLD = 3;
     private static final int EVIDENCE_TOGGLE_THRESHOLD = 260;
+    private static final int RECENT_CLAIMS_LIMIT = 10;
 
     public ClaimController(ClaimWorkflowService claimWorkflowService, CurrentUserService currentUserService) {
         this.claimWorkflowService = claimWorkflowService;
@@ -50,14 +51,14 @@ public class ClaimController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             String ownerUsername = currentUserService.requireUsername();
-            model.addAttribute("recentClaims", claimWorkflowService.listRecentClaims(10, ownerUsername, false));
+            model.addAttribute("recentClaims", claimWorkflowService.listRecentClaims(RECENT_CLAIMS_LIMIT, ownerUsername, false));
             return "index";
         }
     }
 
     @PostMapping("/followup/{id}")
     public String followup(@PathVariable("id") Long claimId,
-                           @RequestParam("question") String question,
+                           @RequestParam(value = "question", required = false) String question,
                            Model model) {
 
         String normalizedQ = question == null ? "" : question.trim();
@@ -138,7 +139,7 @@ public class ClaimController {
     @GetMapping("/")
     public String index(Model model) {
         String ownerUsername = currentUserService.requireUsername();
-        List<ClaimLog> recentClaims = claimWorkflowService.listRecentClaims(10, ownerUsername, false);
+        List<ClaimLog> recentClaims = claimWorkflowService.listRecentClaims(RECENT_CLAIMS_LIMIT, ownerUsername, false);
         model.addAttribute("recentClaims", recentClaims);
         return "index";
     }

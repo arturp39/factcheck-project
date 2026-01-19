@@ -1,0 +1,34 @@
+﻿# Configuration
+
+Env files
+- Copy `infra/.env.example` to `infra/.env` and adjust.
+- Docker Compose reads `infra/.env`; backend/collector/NLP containers read the same variables.
+
+Key settings
+- Database (collector): `COLLECTOR_POSTGRES_DB`, `COLLECTOR_POSTGRES_USER`, `COLLECTOR_POSTGRES_PASSWORD`, `COLLECTOR_POSTGRES_PORT`.
+- Database (backend): `BACKEND_POSTGRES_DB`, `BACKEND_POSTGRES_USER`, `BACKEND_POSTGRES_PASSWORD`, `BACKEND_POSTGRES_PORT`.
+- Backend: `BACKEND_PORT`, `APP_CLAIM_MAX_LENGTH`, `APP_SEARCH_TOP_K`, `APP_RESTCLIENT_CONNECT_TIMEOUT_MS`, `APP_RESTCLIENT_READ_TIMEOUT_MS`.
+- Service URLs (backend/collector): `NLP_SERVICE_URL`, `WEAVIATE_BASE_URL`.
+- Backend auth (JWT): `APP_ADMIN_NAME`, `APP_ADMIN_PASSWORD`, `APP_JWT_SECRET`, `APP_JWT_ISSUER`, `APP_JWT_TTL_MINUTES`, `APP_JWT_COOKIE_*`.
+- Collector: `COLLECTOR_PORT`, `SEARCH_EMBEDDING_DIMENSION`, `CRAWLER_USER_AGENT`, `INGESTION_RUN_TIMEOUT`, `INGESTION_BLOCK_THRESHOLD`, `INGESTION_BLOCK_DURATION`, `INGESTION_TASK_LEASE_SECONDS`.
+- Cloud Tasks (collector, profile `gcp`): `GCP_PROJECT`, `CLOUD_TASKS_LOCATION`, `CLOUD_TASKS_QUEUE`, `CLOUD_TASKS_TARGET_URL`, `CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL`, `CLOUD_TASKS_ACCESS_TOKEN`.
+- NLP: `NLP_PORT`, `NLP_USE_FAKE_EMBEDDINGS`, `NLP_SERVICE_NAME`, `NLP_SERVICE_VERSION`, `NLP_LOG_LEVEL`, `NLP_EMBEDDING_DIM`, `NLP_MAX_TEXT_LENGTH`, `NLP_MAX_TEXTS_PER_REQUEST`, `NLP_MAX_TOTAL_CHARS`, `NLP_VERTEX_*` limits.
+- NLP client auth (backend/collector): `NLP_SERVICE_AUTH_ENABLED`, `NLP_SERVICE_AUTH_AUDIENCE`.
+- Vertex AI (backend): `VERTEX_PROJECT_ID`, `VERTEX_LOCATION`, `VERTEX_MODEL_NAME`, `VERTEX_CREDENTIALS_PATH`.
+- Weaviate: `WEAVIATE_PORT`, `WEAVIATE_BASE_URL`, `WEAVIATE_API_KEY`, `WEAVIATE_MAX_DISTANCE`, `WEAVIATE_DEFAULT_VECTORIZER=none`, `WEAVIATE_QUERY_DEFAULTS_LIMIT`.
+- NewsAPI: `NEWSAPI_API_KEY`, `NEWSAPI_BASE_URL`, `NEWSAPI_MAX_SOURCES_PER_REQUEST`, `NEWSAPI_MAX_PAGES_PER_BATCH`, `NEWSAPI_MAX_REQUESTS_PER_INGESTION`, `NEWSAPI_SORT_BY`.
+- MBFC (RapidAPI): `RAPIDAPI_KEY` (optionally `MBFC_RAPIDAPI_BASE_URL`, `MBFC_RAPIDAPI_HOST`).
+
+Profiles
+- Collector uses `SPRING_PROFILES_ACTIVE` (default `prod` in `infra/.env`).
+- Backend uses the default Spring profile unless set; both services run Flyway migrations from `classpath:db/migration`.
+
+Correlation IDs
+- Optional request header `X-Correlation-Id`. Services generate and echo when absent; logged consistently.
+
+Rate/size limits
+- Claim length: default 400 chars (`APP_CLAIM_MAX_LENGTH`).
+- Pagination: size 1-200.
+- Collector search: embedding dimension must match `SEARCH_EMBEDDING_DIMENSION` (default 768).
+- NLP limits: `NLP_MAX_TEXT_LENGTH`, `NLP_MAX_TEXTS_PER_REQUEST`, `NLP_MAX_TOTAL_CHARS`.
+

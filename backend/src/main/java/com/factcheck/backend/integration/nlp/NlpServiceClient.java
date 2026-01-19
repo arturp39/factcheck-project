@@ -21,6 +21,7 @@ import java.util.UUID;
 public class NlpServiceClient {
 
     private final RestTemplate restTemplate;
+    private final NlpServiceAuthTokenProvider authTokenProvider;
 
     @Value("${nlp-service.url}")
     private String baseUrl;
@@ -38,14 +39,7 @@ public class NlpServiceClient {
                 throw new NlpServiceException("NLP embed failed: request is null");
             }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            String correlationId = request.getCorrelationId();
-            String cid = (correlationId != null && !correlationId.isBlank())
-                    ? correlationId
-                    : UUID.randomUUID().toString();
-            headers.set("X-Correlation-Id", cid);
+            HttpHeaders headers = buildHeaders(request.getCorrelationId());
 
             HttpEntity<EmbedRequest> entity = new HttpEntity<>(request, headers);
 
@@ -97,5 +91,21 @@ public class NlpServiceClient {
         log.info("embedSingleToVector() produced vector length={} dimFromService={}",
                 vector.length, response.getDimension());
         return vector;
+    }
+
+    private HttpHeaders buildHeaders(String correlationId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        String cid = (correlationId != null && !correlationId.isBlank())
+                ? correlationId
+                : UUID.randomUUID().toString();
+        headers.set("X-Correlation-Id", cid);
+
+        if (authTokenProvider != null && authTokenProvider.isEnabled()) {
+            headers.setBearerAuth(authTokenProvider.getIdTokenValue());
+        }
+
+        return headers;
     }
 }

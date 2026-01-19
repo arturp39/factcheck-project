@@ -10,17 +10,74 @@ info:
 servers:
   - url: https://factcheck-backend-804697237544.us-central1.run.app
     description: Cloud Run backend
-security: []
+security:
+  - bearerAuth: []
 tags:
+  - name: auth
+    description: Authentication (JWT)
   - name: claims
     description: Claim verification and retrieval
 paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Login
+      operationId: login
+      description: Returns a JWT token for API access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              basic:
+                value:
+                  username: "admin"
+                  password: "change_me"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        "401":
+          description: Invalid credentials
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Register
+      operationId: register
+      description: Creates a user and returns a JWT token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              basic:
+                value:
+                  username: "user1"
+                  password: "change_me"
+      responses:
+        "200":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        "401":
+          description: Invalid credentials
   /api/claims/verify:
     post:
       tags: [claims]
       summary: Verify a claim
+      description: Triggers embedding + vector search + LLM fact-check and stores the result. Requires JWT (USER or ADMIN).
       operationId: verifyClaim
-      description: Triggers embedding + vector search + LLM fact-check and stores the result.
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
       requestBody:
@@ -59,6 +116,7 @@ paths:
       tags: [claims]
       summary: List claim logs
       operationId: listClaims
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - in: query
@@ -107,6 +165,7 @@ paths:
       tags: [claims]
       summary: Get a claim
       operationId: getClaim
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/ClaimId'
@@ -124,6 +183,7 @@ paths:
       tags: [claims]
       summary: Re-run evidence search for a claim
       operationId: getClaimEvidence
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/ClaimId'
@@ -141,6 +201,7 @@ paths:
       tags: [claims]
       summary: Get claim history (follow-ups + evidence)
       operationId: getClaimHistory
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/ClaimId'
@@ -158,6 +219,7 @@ paths:
       tags: [claims]
       summary: Ask a follow-up question
       operationId: followupClaim
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/ClaimId'
@@ -185,6 +247,7 @@ paths:
       tags: [claims]
       summary: Bias analysis for a claim
       operationId: biasClaim
+      description: Requires JWT (USER or ADMIN).
       parameters:
         - $ref: '#/components/parameters/CorrelationId'
         - $ref: '#/components/parameters/ClaimId'
@@ -201,6 +264,7 @@ paths:
     get:
       summary: Health check
       operationId: backendHealth
+      description: Requires JWT with ADMIN role.
       responses:
         "200":
           description: Service is up
@@ -223,6 +287,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     CorrelationId:
       in: header
@@ -473,4 +542,28 @@ components:
       properties:
         status:
           type: string
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        tokenType:
+          type: string
+      required: [token, tokenType]
 

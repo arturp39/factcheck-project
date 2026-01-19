@@ -15,9 +15,9 @@ Steps
 2) Build & start: `cd infra` then `docker compose up --build`.
 3) Wait for health checks: Postgres (backend + collector), Weaviate, NLP, backend, collector.
 4) Test services:
-   - Backend health: `curl -s https://factcheck-backend-804697237544.us-central1.run.app/actuator/health`
-   - Collector health: `curl -s https://factcheck-news-collector-804697237544.us-central1.run.app/actuator/health`
-   - NLP health: `curl -s https://factcheck-nlp-service-804697237544.us-central1.run.app/health`
+   - Backend health: `curl -s http://localhost:8080/actuator/health`
+   - Collector health: `curl -s http://localhost:8081/actuator/health`
+   - NLP health: `curl -s http://localhost:8000/health`
 
 Shutdown
 - From `infra/`: `docker compose down` (add `-v` to drop volumes).

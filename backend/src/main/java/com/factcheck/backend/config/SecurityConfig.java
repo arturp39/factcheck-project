@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/styles.css").permitAll()
                         .requestMatchers("/login", "/register", "/error").permitAll()
                         .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/claims/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/**", "/actuator/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .hasRole("ADMIN")
                         .requestMatchers("/", "/verify", "/history/**", "/followup/**", "/bias/**")
@@ -56,8 +57,7 @@ public class SecurityConfig {
     public DaoAuthenticationProvider authenticationProvider(
             org.springframework.security.core.userdetails.UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
