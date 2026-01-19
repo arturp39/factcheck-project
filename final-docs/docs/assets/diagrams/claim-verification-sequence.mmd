@@ -1,0 +1,19 @@
+sequenceDiagram
+  actor User
+  participant BE as Backend
+  participant NLP as NLP Service
+  participant W as Weaviate
+  participant VAI as Vertex AI
+  participant DB as Backend DB
+
+  User->>BE: POST /verify (claim)
+  Note over BE: Generate correlationId (cid)
+  BE->>NLP: POST /embed (X-Correlation-Id=cid)
+  NLP-->>BE: embeddings
+  BE->>W: GraphQL nearVector (cid)
+  W-->>BE: evidence chunks
+  BE->>VAI: LLM prompt (claim + evidence)
+  VAI-->>BE: verdict + explanation
+  BE->>DB: save claim + answer (cid)
+  DB-->>BE: persisted
+  BE-->>User: verdict + evidence + claimId (cid)

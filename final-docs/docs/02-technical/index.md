@@ -12,22 +12,57 @@ This section covers the technical architecture, design decisions, and implementa
 
 ### High-Level Architecture
 
-`
-[User/UI] -> [Backend API + Thymeleaf UI]
-                | embeds via REST
-                v
-           [NLP Service]
-                |
-                v
-          [Weaviate Vector DB]
-                ^
-                |
-       [News Collector Service]
-         |             |
-   Postgres (content)  External APIs (NewsAPI, MBFC)
+```mermaid
+flowchart LR
+  U["End user"] <--> BE
+  A["Admin / Operator"] <--> COL
 
-Backend persistence: Postgres (claim_log, claim_followup, app_user)
-`
+  subgraph CR["GCP Cloud Run"]
+    BE["factcheck-backend<br>(Spring Boot + Thymeleaf)<br>/api/claims/verify<br>/api/claims/:id/followup<br>/api/claims/:id/bias"]
+    COL["factcheck-news-collector<br>(Spring Boot)<br>/ingestion/run<br>/ingestion/task"]
+    NLP["factcheck-nlp-service<br>(FastAPI)<br>/preprocess<br>/embed<br>/embed-sentences"]
+  end
+
+  subgraph SQL["Cloud SQL (PostgreSQL)"]
+    DB_BE["backend DB<br>users, claims, followups"]
+    DB_COL["collector DB<br>sources, articles, runs/logs, mbfc_sources"]
+  end
+
+  subgraph GCE["GCE VM (Docker)"]
+    W["Weaviate Vector DB<br>Class: ArticleChunk<br>/v1/graphql<br>/v1/objects"]
+  end
+
+  subgraph EXT["External services / APIs"]
+    VAI["Vertex AI<br>Embeddings: gemini-embedding-001<br>LLM: gemini-2.5-flash"]
+    NEWS["NewsAPI / RSS"]
+    MBFC["MBFC via RapidAPI"]
+  end
+
+  subgraph SCHED["Scheduling"]
+    SCH["Cloud Scheduler (daily)"]
+    TASKS["Cloud Tasks queue"]
+  end
+
+  BE -- "embed claim" --> NLP
+  NLP -- "embeddings" --> BE
+  BE -- "nearVector search" --> W
+  W -- "evidence" --> BE
+  BE -- "LLM request" --> VAI
+  VAI -- "verdict + explanation" --> BE
+  BE <--> DB_BE
+
+  SCH --> COL
+  COL -- "enqueue tasks" --> TASKS
+  TASKS --> COL
+  COL --> NEWS
+  NEWS --> COL
+  COL -- "sync bias metadata" --> MBFC
+  MBFC --> COL
+  COL -- "preprocess + embed" --> NLP
+  NLP -- "sentence embeddings" --> COL
+  COL -- "index chunks" --> W
+  COL <--> DB_COL
+```
 
 ### System Components
 
@@ -52,6 +87,23 @@ Ingestion -> fetch sources -> preprocess/chunk
          -> embed -> index in Weaviate
 Cloud Scheduler triggers /ingestion/run daily at 00:00; Cloud Tasks fan out /ingestion/task in production.
 `
+
+### Vector Store Schema (ArticleChunk)
+
+```mermaid
+flowchart LR
+  A["Article<br>title, url, publishedDate"] --> C1["Chunk 1<br>text"]
+  A --> C2["Chunk 2<br>text"]
+  A --> C3["Chunk N<br>text"]
+
+  subgraph W["Weaviate: ArticleChunk class"]
+    V["ArticleChunk<br>text<br>articleTitle<br>sourceName<br>articleUrl<br>publishedDate<br>chunkIndex<br>mbfcBias<br>mbfcFactualReporting<br>mbfcCredibility<br>vector[3072]"]
+  end
+
+  C1 --> V
+  C2 --> V
+  C3 --> V
+```
 
 ## Security Overview
 

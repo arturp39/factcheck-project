@@ -1,0 +1,57 @@
+flowchart LR
+  subgraph CR["GCP Cloud Run"]
+    BE["factcheck-backend<br>(Spring Boot + Thymeleaf)<br>/api/claims/verify<br>/api/claims/:id/followup<br>/api/claims/:id/bias"]
+    COL["factcheck-news-collector<br>(Spring Boot)<br>/ingestion/run<br>/ingestion/task"]
+    NLP["factcheck-nlp-service<br>(FastAPI)<br>/preprocess<br>/embed<br>/embed-sentences"]
+  end
+
+  subgraph SQL["Cloud SQL (PostgreSQL)"]
+    DB_BE["backend DB<br>users, claims, followups"]
+    DB_COL["collector DB<br>sources, articles, runs/logs, mbfc_sources"]
+  end
+
+  subgraph GCE["GCE VM (Docker)"]
+    W["Weaviate Vector DB<br>Class: ArticleChunk<br>/v1/graphql<br>/v1/objects"]
+  end
+
+  subgraph EXT["External services / APIs"]
+    VAI["Vertex AI<br>Embeddings: gemini-embedding-001<br>LLM: gemini-2.5-flash"]
+    NEWS["NewsAPI / RSS"]
+    MBFC["MBFC via RapidAPI"]
+  end
+
+  subgraph SCHED["Scheduling"]
+    SCH["Cloud Scheduler (daily)"]
+    TASKS["Cloud Tasks queue"]
+  end
+
+  U["End user"] <--> BE
+  A["Admin / Operator"] <--> COL
+
+  %% Claim verification path
+  BE -- "POST /embed (claim)" --> NLP
+  NLP -- "claim embedding vector" --> BE
+  NLP -- "embeddings request" --> VAI
+  VAI -- "embeddings response" --> NLP
+
+  BE -- "GraphQL nearVector search" --> W
+  W -- "evidence chunks" --> BE
+
+  BE -- "LLM request" --> VAI
+  VAI -- "verdict + explanation" --> BE
+
+  BE <--> DB_BE
+
+  %% Ingestion path
+  SCH --> COL
+  COL -- "enqueue tasks" --> TASKS
+  TASKS --> COL
+
+  COL --> NEWS
+  COL -- "sync bias metadata" --> MBFC
+
+  COL -- "preprocess + embed" --> NLP
+  NLP -- "sentence embeddings" --> COL
+
+  COL -- "index chunks" --> W
+  COL <--> DB_COL

@@ -1,0 +1,12 @@
+flowchart LR
+  A["Article<br>title, url, publishedDate"] --> C1["Chunk 1<br>text"]
+  A --> C2["Chunk 2<br>text"]
+  A --> C3["Chunk N<br>text"]
+
+  subgraph W["Weaviate: ArticleChunk class"]
+    V["ArticleChunk<br>text<br>articleTitle<br>sourceName<br>articleUrl<br>publishedDate<br>chunkIndex<br>mbfcBias<br>mbfcFactualReporting<br>mbfcCredibility<br>vector[3072]"]
+  end
+
+  C1 --> V
+  C2 --> V
+  C3 --> V

@@ -1,0 +1,26 @@
+erDiagram
+  APP_USER ||--o{ CLAIM_LOG : owns
+  CLAIM_LOG ||--o{ CLAIM_FOLLOWUP : has
+
+  APP_USER {
+    BIGINT id PK
+    VARCHAR username
+    VARCHAR role
+    TIMESTAMPTZ created_at
+  }
+
+  CLAIM_LOG {
+    BIGINT id PK
+    TEXT claim_text
+    VARCHAR owner_username FK
+    TEXT verdict
+    TIMESTAMPTZ created_at
+  }
+
+  CLAIM_FOLLOWUP {
+    BIGINT id PK
+    BIGINT claim_id FK
+    TEXT question
+    TEXT answer
+    TIMESTAMPTZ created_at
+  }

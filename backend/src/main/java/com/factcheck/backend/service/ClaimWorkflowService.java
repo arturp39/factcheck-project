@@ -94,6 +94,7 @@ public class ClaimWorkflowService {
                 claimId,
                 logEntry.getClaimText(),
                 logEntry.getVerdict(),
+                logEntry.getExplanation(),
                 biasText,
                 evidence
         );
@@ -185,6 +186,7 @@ public class ClaimWorkflowService {
             Long claimId,
             String claim,
             String verdict,
+            String explanation,
             String biasAnalysis,
             List<ArticleDto> evidence
     ) {}

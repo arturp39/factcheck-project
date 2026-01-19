@@ -257,6 +257,7 @@ class ClaimControllerTest {
                 9L,
                 "claim text",
                 "false",
+                "expl",
                 "bias text",
                 List.of(article)
         );
@@ -269,6 +270,7 @@ class ClaimControllerTest {
 
         assertThat(view).isEqualTo("result");
         assertThat(model.getAttribute("biasAnalysis")).isEqualTo("bias text");
+        assertThat(model.getAttribute("explanation")).isEqualTo("expl");
     }
 
     @Test

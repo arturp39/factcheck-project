@@ -1,0 +1,61 @@
+erDiagram
+  PUBLISHERS ||--o{ SOURCE_ENDPOINTS : owns
+  PUBLISHERS ||--o{ ARTICLES : publishes
+  MBFC_SOURCES ||--o{ PUBLISHERS : maps
+
+  ARTICLES ||--|| ARTICLE_CONTENT : content
+  ARTICLES ||--o{ ARTICLE_SOURCES : sources
+  SOURCE_ENDPOINTS ||--o{ ARTICLE_SOURCES : fetched_by
+
+  INGESTION_RUNS ||--o{ INGESTION_LOGS : logs
+  SOURCE_ENDPOINTS ||--o{ INGESTION_LOGS : processed
+
+  PUBLISHERS {
+    BIGINT id PK
+    VARCHAR name
+    BIGINT mbfc_source_id FK
+  }
+
+  SOURCE_ENDPOINTS {
+    BIGINT id PK
+    BIGINT publisher_id FK
+    TEXT kind
+    TEXT rss_url
+  }
+
+  ARTICLES {
+    BIGINT id PK
+    BIGINT publisher_id FK
+    TEXT canonical_url
+    TEXT title
+    TIMESTAMPTZ published_date
+  }
+
+  ARTICLE_CONTENT {
+    BIGINT article_id PK
+    TEXT extracted_text
+  }
+
+  ARTICLE_SOURCES {
+    BIGINT id PK
+    BIGINT article_id FK
+    BIGINT source_endpoint_id FK
+  }
+
+  INGESTION_RUNS {
+    BIGINT id PK
+    TIMESTAMPTZ started_at
+    TEXT status
+  }
+
+  INGESTION_LOGS {
+    BIGINT id PK
+    BIGINT run_id FK
+    BIGINT source_endpoint_id FK
+    TEXT status
+  }
+
+  MBFC_SOURCES {
+    BIGINT mbfc_source_id PK
+    TEXT source_name
+  }

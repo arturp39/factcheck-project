@@ -109,7 +109,7 @@ public class ClaimController {
                 result.claim(),
                 result.evidence(),
                 result.verdict(),
-                null,
+                result.explanation(),
                 result.biasAnalysis(),
                 claimWorkflowService.listFollowups(claimId, ownerUsername, false)
         );

@@ -208,7 +208,7 @@ class ClaimApiServiceTest {
         when(currentUserService.isAdmin()).thenReturn(false);
 
         ClaimWorkflowService.BiasResult result =
-                new ClaimWorkflowService.BiasResult("cid", 1L, "claim", "true", "bias", List.of());
+                new ClaimWorkflowService.BiasResult("cid", 1L, "claim", "true", "expl", "bias", List.of());
         when(claimWorkflowService.bias(1L, "cid", "user", false)).thenReturn(result);
 
         BiasResponse response = claimApiService.bias(1L, "cid");

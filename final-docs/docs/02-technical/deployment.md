@@ -15,6 +15,48 @@ Cloud Scheduler: triggers /ingestion/run daily at 00:00 (Cloud Run is request-dr
 Cloud Tasks: fan-out ingestion tasks to /ingestion/task in the collector (gcp profile)
 `
 
+```mermaid
+flowchart LR
+  subgraph CloudRun["Cloud Run"]
+    BE["backend"]
+    COL["news-collector"]
+    NLP["nlp-service"]
+  end
+
+  subgraph CloudSQL["Cloud SQL"]
+    DB_BE["backend DB"]
+    DB_COL["collector DB"]
+  end
+
+  subgraph VM["Compute Engine VM"]
+    W["Weaviate (Docker)"]
+  end
+
+  subgraph Managed["GCP Managed Services"]
+    SCH["Cloud Scheduler"]
+    TASKS["Cloud Tasks"]
+    VAI["Vertex AI"]
+  end
+
+  subgraph External["External APIs"]
+    NEWS["NewsAPI / RSS"]
+    MBFC["MBFC RapidAPI"]
+  end
+
+  BE <--> DB_BE
+  COL <--> DB_COL
+  BE <--> W
+  COL <--> W
+  BE <--> NLP
+  NLP --> VAI
+  BE --> VAI
+  COL --> NEWS
+  COL -- "sync bias metadata" --> MBFC
+  SCH --> COL
+  COL --> TASKS
+  TASKS --> COL
+```
+
 **Local/dev**
 `
 Docker Compose (infra/docker-compose.yml)

@@ -8,6 +8,105 @@
 | **Version** | 15 (docker-compose) |
 | **ORM** | Spring Data JPA / Hibernate |
 
+## Entity Relationship Diagram (visual)
+
+### Backend database
+
+```mermaid
+erDiagram
+  APP_USER ||--o{ CLAIM_LOG : owns
+  CLAIM_LOG ||--o{ CLAIM_FOLLOWUP : has
+
+  APP_USER {
+    BIGINT id PK
+    VARCHAR username
+    VARCHAR role
+    TIMESTAMPTZ created_at
+  }
+
+  CLAIM_LOG {
+    BIGINT id PK
+    TEXT claim_text
+    VARCHAR owner_username FK
+    TEXT verdict
+    TIMESTAMPTZ created_at
+  }
+
+  CLAIM_FOLLOWUP {
+    BIGINT id PK
+    BIGINT claim_id FK
+    TEXT question
+    TEXT answer
+    TIMESTAMPTZ created_at
+  }
+```
+
+### Collector database
+
+```mermaid
+erDiagram
+  PUBLISHERS ||--o{ SOURCE_ENDPOINTS : owns
+  PUBLISHERS ||--o{ ARTICLES : publishes
+  MBFC_SOURCES ||--o{ PUBLISHERS : maps
+
+  ARTICLES ||--|| ARTICLE_CONTENT : content
+  ARTICLES ||--o{ ARTICLE_SOURCES : sources
+  SOURCE_ENDPOINTS ||--o{ ARTICLE_SOURCES : fetched_by
+
+  INGESTION_RUNS ||--o{ INGESTION_LOGS : logs
+  SOURCE_ENDPOINTS ||--o{ INGESTION_LOGS : processed
+
+  PUBLISHERS {
+    BIGINT id PK
+    VARCHAR name
+    BIGINT mbfc_source_id FK
+  }
+
+  SOURCE_ENDPOINTS {
+    BIGINT id PK
+    BIGINT publisher_id FK
+    TEXT kind
+    TEXT rss_url
+  }
+
+  ARTICLES {
+    BIGINT id PK
+    BIGINT publisher_id FK
+    TEXT canonical_url
+    TEXT title
+    TIMESTAMPTZ published_date
+  }
+
+  ARTICLE_CONTENT {
+    BIGINT article_id PK
+    TEXT extracted_text
+  }
+
+  ARTICLE_SOURCES {
+    BIGINT id PK
+    BIGINT article_id FK
+    BIGINT source_endpoint_id FK
+  }
+
+  INGESTION_RUNS {
+    BIGINT id PK
+    TIMESTAMPTZ started_at
+    TEXT status
+  }
+
+  INGESTION_LOGS {
+    BIGINT id PK
+    BIGINT run_id FK
+    BIGINT source_endpoint_id FK
+    TEXT status
+  }
+
+  MBFC_SOURCES {
+    BIGINT mbfc_source_id PK
+    TEXT source_name
+  }
+```
+
 ## Entity Relationship Diagram (text)
 
 - **backend**: app_user (1) -> claim_log (N) -> claim_followup (N)
