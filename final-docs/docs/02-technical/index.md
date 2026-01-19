@@ -50,6 +50,7 @@ Claim -> Backend /verify (JWT required)
 
 Ingestion -> fetch sources -> preprocess/chunk
          -> embed -> index in Weaviate
+Cloud Scheduler triggers /ingestion/run daily at 00:00; Cloud Tasks fan out /ingestion/task in production.
 `
 
 ## Security Overview

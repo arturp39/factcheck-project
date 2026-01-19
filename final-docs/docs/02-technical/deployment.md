@@ -11,7 +11,8 @@ Cloud SQL: Postgres (backend DB), Postgres (collector DB)
 GCE VM: Weaviate in Docker
 Vertex AI: Gemini + gemini-embedding-001
 External APIs: NewsAPI, MBFC (RapidAPI)
-Cloud Scheduler: triggers /ingestion/run on a schedule (no in-app scheduler in Cloud Run)
+Cloud Scheduler: triggers /ingestion/run daily at 00:00 (Cloud Run is request-driven)
+Cloud Tasks: fan-out ingestion tasks to /ingestion/task in the collector (gcp profile)
 `
 
 **Local/dev**
@@ -47,7 +48,15 @@ Cloud Build YAMLs build container images per service and deploy to Cloud Run.
 | NLP_SERVICE_URL | NLP service URL | http://nlp-service:8000 |
 | NLP_SERVICE_AUTH_ENABLED | Enable Cloud Run IAM auth for NLP | false |
 | NLP_SERVICE_AUTH_AUDIENCE | NLP Cloud Run URL (ID token audience) | https://factcheck-nlp-service-... |
+| NLP_SERVICE_RETRY_MAX_ATTEMPTS | NLP retry attempts for 429/503 | 3 |
+| NLP_SERVICE_RETRY_INITIAL_BACKOFF_MS | NLP retry backoff start | 500 |
+| NLP_SERVICE_RETRY_MAX_BACKOFF_MS | NLP retry backoff cap | 5000 |
 | VERTEX_PROJECT_ID | GCP project | my-project |
+| CLOUD_TASKS_PROJECT_ID | GCP project for Cloud Tasks | my-project |
+| CLOUD_TASKS_LOCATION | Cloud Tasks region | us-central1 |
+| CLOUD_TASKS_QUEUE | Cloud Tasks queue name | ingestion-queue |
+| CLOUD_TASKS_TARGET_URL | Collector /ingestion/task URL | https://factcheck-news-collector.../ingestion/task |
+| CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL | OIDC service account for tasks | service-account@project.iam.gserviceaccount.com |
 | NEWSAPI_API_KEY / RAPIDAPI_KEY | External APIs | *** |
 
 **Secrets Management:** Use .env for local dev; in GCP store secrets in Secret Manager or Cloud Run service variables.

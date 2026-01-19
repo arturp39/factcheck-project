@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -23,6 +25,20 @@ public class NlpServiceClient {
     @Value("${nlp-service.url}")
     private String baseUrl;
 
+    @Value("${nlp-service.retry.max-attempts:3}")
+    private int maxRetryAttempts;
+
+    @Value("${nlp-service.retry.initial-backoff-ms:500}")
+    private long retryInitialBackoffMs;
+
+    @Value("${nlp-service.retry.max-backoff-ms:5000}")
+    private long retryMaxBackoffMs;
+
+    private static final Set<Integer> RETRY_STATUS_CODES = Set.of(
+            HttpStatus.TOO_MANY_REQUESTS.value(),
+            HttpStatus.SERVICE_UNAVAILABLE.value()
+    );
+
     public PreprocessResponse preprocess(String text, String correlationId) {
         try {
             PreprocessRequest req = new PreprocessRequest();
@@ -30,20 +46,22 @@ public class NlpServiceClient {
             req.setCorrelationId(correlationId);
 
             HttpHeaders headers = buildHeaders(correlationId);
+            String resolvedCorrelationId = resolveCorrelationId(headers);
 
             HttpEntity<PreprocessRequest> entity = new HttpEntity<>(req, headers);
 
-            ResponseEntity<PreprocessResponse> resp = restTemplate.exchange(
+            ResponseEntity<PreprocessResponse> resp = exchangeWithRetry(
                     baseUrl + "/preprocess",
-                    HttpMethod.POST,
                     entity,
-                    PreprocessResponse.class
+                    PreprocessResponse.class,
+                    "preprocess",
+                    resolvedCorrelationId
             );
 
-            if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
+            if (!resp.getStatusCode().is2xxSuccessful()) {
                 throw new NlpServiceException(
                         "NLP preprocess failed: HTTP status " +
-                                (resp != null ? resp.getStatusCode() : "null response")
+                                resp.getStatusCode().value()
                 );
             }
 
@@ -66,20 +84,22 @@ public class NlpServiceClient {
                 throw new NlpServiceException("NLP embed failed: request is null");
             }
             HttpHeaders headers = buildHeaders(request.getCorrelationId());
+            String resolvedCorrelationId = resolveCorrelationId(headers);
 
             HttpEntity<EmbedRequest> entity = new HttpEntity<>(request, headers);
 
-            ResponseEntity<EmbedResponse> resp = restTemplate.exchange(
+            ResponseEntity<EmbedResponse> resp = exchangeWithRetry(
                     baseUrl + "/embed",
-                    HttpMethod.POST,
                     entity,
-                    EmbedResponse.class
+                    EmbedResponse.class,
+                    "embed",
+                    resolvedCorrelationId
             );
 
-            if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
+            if (!resp.getStatusCode().is2xxSuccessful()) {
                 throw new NlpServiceException(
                         "NLP embed failed: HTTP status " +
-                                (resp != null ? resp.getStatusCode() : "null response")
+                                resp.getStatusCode().value()
                 );
             }
 
@@ -101,20 +121,22 @@ public class NlpServiceClient {
                 throw new NlpServiceException("NLP embed-sentences failed: request is null");
             }
             HttpHeaders headers = buildHeaders(request.getCorrelationId());
+            String resolvedCorrelationId = resolveCorrelationId(headers);
 
             HttpEntity<SentenceEmbedRequest> entity = new HttpEntity<>(request, headers);
 
-            ResponseEntity<SentenceEmbedResponse> resp = restTemplate.exchange(
+            ResponseEntity<SentenceEmbedResponse> resp = exchangeWithRetry(
                     baseUrl + "/embed-sentences",
-                    HttpMethod.POST,
                     entity,
-                    SentenceEmbedResponse.class
+                    SentenceEmbedResponse.class,
+                    "embed-sentences",
+                    resolvedCorrelationId
             );
 
-            if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
+            if (!resp.getStatusCode().is2xxSuccessful()) {
                 throw new NlpServiceException(
                         "NLP embed-sentences failed: HTTP status " +
-                                (resp != null ? resp.getStatusCode() : "null response")
+                                resp.getStatusCode().value()
                 );
             }
 
@@ -145,5 +167,81 @@ public class NlpServiceClient {
         }
 
         return headers;
+    }
+
+    private static String resolveCorrelationId(HttpHeaders headers) {
+        if (headers == null) {
+            return "-";
+        }
+        String cid = headers.getFirst("X-Correlation-Id");
+        return (cid == null || cid.isBlank()) ? "-" : cid;
+    }
+
+    private <T> ResponseEntity<T> exchangeWithRetry(
+            String url,
+            HttpEntity<?> entity,
+            Class<T> responseType,
+            String operation,
+            String correlationId
+    ) {
+        int attempts = Math.max(1, maxRetryAttempts);
+        int attempt = 1;
+
+        while (true) {
+            try {
+                ResponseEntity<T> resp = restTemplate.exchange(url, HttpMethod.POST, entity, responseType);
+                if (isRetryableStatus(resp.getStatusCode().value()) && attempt < attempts) {
+                    sleepBeforeRetry(operation, resp.getStatusCode().value(), attempt, attempts, correlationId);
+                    attempt++;
+                    continue;
+                }
+                return resp;
+            } catch (RestClientResponseException e) {
+                int status = e.getStatusCode().value();
+                if (isRetryableStatus(status) && attempt < attempts) {
+                    sleepBeforeRetry(operation, status, attempt, attempts, correlationId);
+                    attempt++;
+                    continue;
+                }
+                throw e;
+            }
+        }
+    }
+
+    private boolean isRetryableStatus(int status) {
+        return RETRY_STATUS_CODES.contains(status);
+    }
+
+    private void sleepBeforeRetry(
+            String operation,
+            int status,
+            int attempt,
+            int maxAttempts,
+            String correlationId
+    ) {
+        long delay = computeBackoffMs(attempt);
+        log.warn(
+                "Retrying NLP {} after HTTP {} (attempt {}/{}) in {}ms correlationId={}",
+                operation,
+                status,
+                attempt,
+                maxAttempts,
+                delay,
+                correlationId
+        );
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RestClientException("NLP retry interrupted", e);
+        }
+    }
+
+    private long computeBackoffMs(int attempt) {
+        long initial = Math.max(0L, retryInitialBackoffMs);
+        long max = Math.max(initial, retryMaxBackoffMs);
+        long multiplier = 1L << Math.max(0, attempt - 1);
+        long delay = initial * multiplier;
+        return Math.min(delay, max);
     }
 }

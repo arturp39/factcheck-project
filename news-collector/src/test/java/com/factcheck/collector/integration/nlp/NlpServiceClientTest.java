@@ -5,14 +5,18 @@ import com.factcheck.collector.integration.nlp.dto.EmbedRequest;
 import com.factcheck.collector.integration.nlp.dto.EmbedResponse;
 import com.factcheck.collector.integration.nlp.dto.PreprocessRequest;
 import com.factcheck.collector.integration.nlp.dto.PreprocessResponse;
+import com.factcheck.collector.integration.nlp.dto.SentenceEmbedRequest;
+import com.factcheck.collector.integration.nlp.dto.SentenceEmbedResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,12 +28,11 @@ class NlpServiceClientTest {
 
     private RestTemplate restTemplate;
     private NlpServiceClient client;
-    private NlpServiceAuthTokenProvider authTokenProvider;
 
     @BeforeEach
     void setUp() throws Exception {
         restTemplate = mock(RestTemplate.class);
-        authTokenProvider = mock(NlpServiceAuthTokenProvider.class);
+        NlpServiceAuthTokenProvider authTokenProvider = mock(NlpServiceAuthTokenProvider.class);
         client = new NlpServiceClient(restTemplate, authTokenProvider);
 
         Field f = NlpServiceClient.class.getDeclaredField("baseUrl");
@@ -120,20 +123,38 @@ class NlpServiceClientTest {
                 .isInstanceOf(NlpServiceException.class)
                 .hasMessageContaining("request is null");
     }
+
     @Test
-    void preprocess_whenRestTemplateReturnsNullResponse_throws() {
+    void embedSentences_retriesOn429AndSucceeds() throws Exception {
+        setRetryConfigForTest();
+
+        SentenceEmbedResponse body = new SentenceEmbedResponse();
+        body.setEmbeddings(List.of(List.of(0.1)));
+
+        ResponseEntity<SentenceEmbedResponse> resp =
+                new ResponseEntity<>(body, HttpStatus.OK);
+
         when(restTemplate.exchange(
-                eq("http://nlp-service/preprocess"),
+                eq("http://nlp-service/embed-sentences"),
                 eq(HttpMethod.POST),
                 any(HttpEntity.class),
-                eq(PreprocessResponse.class)
-        )).thenReturn(null);
+                eq(SentenceEmbedResponse.class)
+        )).thenThrow(tooManyRequests()).thenReturn(resp);
 
-        assertThatThrownBy(() -> client.preprocess("text", "cid-1"))
-                .isInstanceOf(NlpServiceException.class)
-                .hasMessageContaining("HTTP status null response");
+        SentenceEmbedRequest req = new SentenceEmbedRequest();
+        req.setSentences(List.of("a", "b"));
+        req.setCorrelationId("cid");
+
+        SentenceEmbedResponse result = client.embedSentences(req);
+
+        assertThat(result.getEmbeddings()).hasSize(1);
+        verify(restTemplate, times(2)).exchange(
+                eq("http://nlp-service/embed-sentences"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(SentenceEmbedResponse.class)
+        );
     }
-
     @Test
     void preprocess_whenNon2xxStatus_throws() {
         ResponseEntity<PreprocessResponse> resp =
@@ -299,5 +320,27 @@ class NlpServiceClientTest {
     @SuppressWarnings("unchecked")
     private static <T> ArgumentCaptor<HttpEntity<T>> httpEntityCaptor() {
         return (ArgumentCaptor<HttpEntity<T>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(HttpEntity.class);
+    }
+
+    private void setRetryConfigForTest() throws Exception {
+        setField("maxRetryAttempts", 2);
+        setField("retryInitialBackoffMs", 1L);
+        setField("retryMaxBackoffMs", 1L);
+    }
+
+    private void setField(String name, Object value) throws Exception {
+        Field f = NlpServiceClient.class.getDeclaredField(name);
+        f.setAccessible(true);
+        f.set(client, value);
+    }
+
+    private static HttpClientErrorException tooManyRequests() {
+        return HttpClientErrorException.create(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Rate exceeded",
+                HttpHeaders.EMPTY,
+                new byte[0],
+                StandardCharsets.UTF_8
+        );
     }
 }

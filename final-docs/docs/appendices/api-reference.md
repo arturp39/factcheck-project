@@ -132,9 +132,10 @@ These endpoints are intended for internal use and are not protected by app-level
 
 ### POST /ingestion/run
 Starts an ingestion run. Returns 202 Accepted with run ID and task count. 409 if a run is already active.
+In production, Cloud Scheduler triggers this daily at 00:00.
 
 ### POST /ingestion/task
-Handles a specific ingestion task (used by scheduler/worker). Returns 200 on success, 204 if the payload is invalid and ignored.
+Handles a specific ingestion task (Cloud Tasks in production). Returns 200 on success, 204 if the payload is invalid and ignored.
 
 ### GET /admin/ingestion/logs
 Paginated list of ingestion logs.

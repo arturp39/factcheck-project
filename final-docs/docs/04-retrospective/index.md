@@ -6,9 +6,9 @@ This section reflects on the project development process, lessons learned, and f
 
 ### Technical Successes
 
-- RAG flow works end-to-end: evidence search, prompt injection, verdict parsing.
-- Correlation IDs across services made debugging straightforward.
-- Semantic chunking improved retrieval quality on long articles.
+- End-to-end RAG pipeline: evidence retrieval, grounded prompting, and auditable verdict storage.
+- Semantic chunking with sentence embeddings and boundary detection for better long-article retrieval.
+- Production ingestion pipeline: robots-aware HTML extraction plus Cloud Scheduler + Cloud Tasks orchestration.
 
 ### Process Successes
 
@@ -26,7 +26,7 @@ This section reflects on the project development process, lessons learned, and f
 
 | Planned | Actual Outcome | Cause | Impact |
 |---------|---------------|-------|--------|
-| Automatic scheduled ingestion | Scheduled via Cloud Scheduler | Time constraints | Low |
+| Automatic scheduled ingestion | Scheduled via Cloud Scheduler + Cloud Tasks (daily 00:00) | Time constraints | Low |
 | Rich frontend UX | Kept minimal Thymeleaf views | Scope control | Low |
 | Full auth/roles | Basic JWT only; no SSO/reset | Time constraints | Low/medium |
 
@@ -48,7 +48,7 @@ This section reflects on the project development process, lessons learned, and f
 |----|-------|----------|-------------|---------------|
 | TD-001 | No SSO/password reset | Medium | Manual user management and no recovery flow | Add reset + SSO integration |
 | TD-002 | Limited retries/backoff | Medium | External API hiccups bubble up | Add resilience4j + queues |
-| TD-003 | Minimal tests | High | No automated coverage | Add unit/integration tests and CI gate |
+| TD-003 | Limited test coverage | Medium | Unit tests exist but coverage is incomplete | Add integration tests and CI gate |
 
 ### Code Quality Issues
 

@@ -47,6 +47,10 @@ nlp-service:
   auth:
     enabled: ${NLP_SERVICE_AUTH_ENABLED:false}
     audience: ${NLP_SERVICE_AUTH_AUDIENCE:}
+  retry:
+    max-attempts: ${NLP_SERVICE_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-ms: ${NLP_SERVICE_RETRY_INITIAL_BACKOFF_MS:500}
+    max-backoff-ms: ${NLP_SERVICE_RETRY_MAX_BACKOFF_MS:5000}
 
 ingestion:
   run-timeout: PT6H
