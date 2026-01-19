@@ -88,3 +88,4 @@ chunking:
   max-tokens: 400
   overlap-sentences: 1
   semantic-min-sentences: 10
+  semantic-max-sentences-per-request: 100

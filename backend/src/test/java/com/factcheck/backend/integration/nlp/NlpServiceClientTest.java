@@ -120,7 +120,7 @@ class NlpServiceClientTest {
         doReturn(empty).when(spy).embed(List.of("text"), "cid");
 
         assertThatThrownBy(() -> spy.embedSingleToVector("text", "cid"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(NlpServiceException.class)
                 .hasMessageContaining("no embeddings");
     }
 
@@ -137,7 +137,7 @@ class NlpServiceClientTest {
         };
 
         assertThatThrownBy(() -> stubClient.embedSingleToVector("text", "cid"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(NlpServiceException.class)
                 .hasMessageContaining("First embedding vector is empty");
     }
 

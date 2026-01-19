@@ -1,7 +1,12 @@
 package com.factcheck.collector.controller;
 
 import com.factcheck.collector.dto.ErrorResponse;
+import com.factcheck.collector.exception.FetchException;
+import com.factcheck.collector.exception.IngestionRunAlreadyRunningException;
 import com.factcheck.collector.exception.MbfcQuotaExceededException;
+import com.factcheck.collector.exception.NlpServiceException;
+import com.factcheck.collector.exception.ProcessingFailedException;
+import com.factcheck.collector.exception.WeaviateException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -29,6 +34,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MbfcQuotaExceededException.class)
     public ResponseEntity<ErrorResponse> handleMbfcQuota(MbfcQuotaExceededException ex, HttpServletRequest request) {
         return buildWarn(ex, request, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @ExceptionHandler({NlpServiceException.class})
+    public ResponseEntity<ErrorResponse> handleNlp(NlpServiceException ex, HttpServletRequest request) {
+        return build(ex, request, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler({WeaviateException.class})
+    public ResponseEntity<ErrorResponse> handleWeaviate(WeaviateException ex, HttpServletRequest request) {
+        return build(ex, request, HttpStatus.BAD_GATEWAY);
+    }
+
+    @ExceptionHandler({FetchException.class})
+    public ResponseEntity<ErrorResponse> handleFetch(FetchException ex, HttpServletRequest request) {
+        return build(ex, request, HttpStatus.BAD_GATEWAY);
+    }
+
+    @ExceptionHandler({ProcessingFailedException.class})
+    public ResponseEntity<ErrorResponse> handleProcessing(ProcessingFailedException ex, HttpServletRequest request) {
+        return build(ex, request, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler({IngestionRunAlreadyRunningException.class})
+    public ResponseEntity<ErrorResponse> handleIngestionRunning(IngestionRunAlreadyRunningException ex,
+                                                               HttpServletRequest request) {
+        return buildWarn(ex, request, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(Exception.class)

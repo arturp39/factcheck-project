@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>FactCheck Assistant</title>
@@ -33,13 +33,17 @@
     <section class="card">
         <h2 class="section-title">New fact-check</h2>
 
-        <form action="#" th:action="@{/verify}" method="post" class="claim-form">
+        <form action="#" th:action="@{/verify}" method="post" class="claim-form" novalidate>
             <label for="claim" class="form-label">Enter factual claim:</label>
             <textarea id="claim"
                       name="claim"
                       class="form-textarea"
                       placeholder="Example: The European Central Bank cut its main interest rate at its most recent meeting."
+                      th:attr="maxlength=${@environment.getProperty('app.claim.max-length','400')},data-maxlength=${@environment.getProperty('app.claim.max-length','400')}"
                       required></textarea>
+            <div id="claim-error" class="alert alert-error" style="display: none;">
+                Claim is required.
+            </div>
 
             <div class="form-footer">
                 <button type="submit" class="btn btn-primary">Verify</button>
@@ -74,9 +78,30 @@
     (function () {
         const form = document.querySelector('.claim-form');
         const loading = document.getElementById('loading');
+        const claim = document.getElementById('claim');
+        const errorBox = document.getElementById('claim-error');
 
-        if (form && loading) {
-            form.addEventListener('submit', function () {
+        if (form && loading && claim && errorBox) {
+            const maxLen = parseInt(claim.dataset.maxlength || '', 10);
+
+            form.addEventListener('submit', function (event) {
+                const trimmed = claim.value.trim();
+                let error = '';
+                if (!trimmed) {
+                    error = 'Claim must not be empty.';
+                } else if (!Number.isNaN(maxLen) && trimmed.length > maxLen) {
+                    error = 'Claim is too long. Please keep it under ' + maxLen + ' characters.';
+                }
+
+                if (error) {
+                    event.preventDefault();
+                    errorBox.textContent = error;
+                    errorBox.style.display = 'block';
+                    loading.style.display = 'none';
+                    return;
+                }
+
+                errorBox.style.display = 'none';
                 loading.style.display = 'block';
             });
         }

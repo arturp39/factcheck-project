@@ -1,6 +1,10 @@
 package com.factcheck.backend.controller;
 
 import com.factcheck.backend.dto.ErrorResponse;
+import com.factcheck.backend.exception.EvidenceSearchException;
+import com.factcheck.backend.exception.NlpServiceException;
+import com.factcheck.backend.exception.VertexServiceException;
+import com.factcheck.backend.exception.WeaviateException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -30,6 +34,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({AccessDeniedException.class})
     public Object handleAccessDenied(Exception ex, HttpServletRequest request, Model model) {
         return buildResponse(ex, request, model, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler({NlpServiceException.class, VertexServiceException.class, EvidenceSearchException.class})
+    public Object handleUpstream(Exception ex, HttpServletRequest request, Model model) {
+        return buildResponse(ex, request, model, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler({WeaviateException.class})
+    public Object handleWeaviate(Exception ex, HttpServletRequest request, Model model) {
+        return buildResponse(ex, request, model, HttpStatus.BAD_GATEWAY);
     }
 
     @ExceptionHandler(Exception.class)

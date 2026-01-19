@@ -1,5 +1,6 @@
 package com.factcheck.backend.service;
 
+import com.factcheck.backend.exception.VertexServiceException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,7 @@ public class VertexEmbeddingService {
 
             if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
                 log.error("Embedding error status={} body={}", resp.statusCode(), resp.body());
-                throw new RuntimeException("Embedding error " + resp.statusCode());
+                throw new VertexServiceException("Embedding error " + resp.statusCode());
             }
 
             float[] vector = extractVector(resp.body());
@@ -41,7 +42,7 @@ public class VertexEmbeddingService {
             return vector;
         } catch (Exception e) {
             log.error("embedText() failed", e);
-            throw new RuntimeException("Embedding failed: " + e.getMessage(), e);
+            throw new VertexServiceException("Embedding failed: " + e.getMessage(), e);
         }
     }
 
@@ -57,12 +58,12 @@ public class VertexEmbeddingService {
         JsonNode root = mapper.readTree(responseBody);
         JsonNode predictions = root.path("predictions");
         if (!predictions.isArray() || predictions.isEmpty()) {
-            throw new IllegalStateException("No predictions field in embedding response");
+            throw new VertexServiceException("No predictions field in embedding response");
         }
 
         JsonNode values = predictions.get(0).path("embeddings").path("values");
         if (!values.isArray() || values.isEmpty()) {
-            throw new IllegalStateException("No embeddings.values field in embedding response");
+            throw new VertexServiceException("No embeddings.values field in embedding response");
         }
 
         float[] vector = new float[values.size()];

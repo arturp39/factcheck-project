@@ -16,8 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ArticleProcessingServiceTest {
@@ -66,6 +65,7 @@ class ArticleProcessingServiceTest {
 
         ReflectionTestUtils.setField(service, "useSemanticChunking", true);
         ReflectionTestUtils.setField(service, "semanticMinSentences", 1);
+        ReflectionTestUtils.setField(service, "semanticMaxSentencesPerRequest", 100);
         ReflectionTestUtils.setField(service, "minSentences", 1);
         ReflectionTestUtils.setField(service, "maxSentences", 100);
         ReflectionTestUtils.setField(service, "maxTokens", 10000);
@@ -100,5 +100,42 @@ class ArticleProcessingServiceTest {
         verify(nlpClient).preprocess("full text", "cid-123");
         verify(nlpClient).embedSentences(any());
         verify(boundaryDetector).detectBoundaries(eq(preprocessResponse.getSentences()), anyList(), anyDouble());
+    }
+
+    @Test
+    void createChunksSemantic_batchesSentenceEmbeddingsWhenTooManySentences() {
+        ArticleProcessingService service = new ArticleProcessingService(nlpClient, boundaryDetector);
+
+        ReflectionTestUtils.setField(service, "useSemanticChunking", true);
+        ReflectionTestUtils.setField(service, "semanticMinSentences", 1);
+        ReflectionTestUtils.setField(service, "semanticMaxSentencesPerRequest", 2);
+        ReflectionTestUtils.setField(service, "minSentences", 1);
+        ReflectionTestUtils.setField(service, "maxSentences", 100);
+        ReflectionTestUtils.setField(service, "maxTokens", 10000);
+        ReflectionTestUtils.setField(service, "overlapSentences", 0);
+        ReflectionTestUtils.setField(service, "similarityThreshold", 0.65d);
+
+        Article article = Article.builder().id(11L).build();
+
+        PreprocessResponse preprocessResponse = new PreprocessResponse();
+        preprocessResponse.setSentences(List.of("S1", "S2", "S3"));
+        when(nlpClient.preprocess("full text", "cid-123")).thenReturn(preprocessResponse);
+
+        SentenceEmbedResponse firstBatch = new SentenceEmbedResponse();
+        firstBatch.setEmbeddings(List.of(
+                List.of(1.0d, 0.0d),
+                List.of(0.0d, 1.0d)
+        ));
+        SentenceEmbedResponse secondBatch = new SentenceEmbedResponse();
+        secondBatch.setEmbeddings(List.of(List.of(1.0d, 1.0d)));
+
+        when(nlpClient.embedSentences(any())).thenReturn(firstBatch, secondBatch);
+        when(boundaryDetector.detectBoundaries(eq(preprocessResponse.getSentences()), anyList(), anyDouble()))
+                .thenReturn(List.of(2));
+
+        ChunkingResult result = service.createChunks(article, "full text", "cid-123");
+
+        assertThat(result.semanticUsed()).isTrue();
+        verify(nlpClient, times(2)).embedSentences(any());
     }
 }

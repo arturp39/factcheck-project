@@ -17,7 +17,7 @@
     </div>
 </header>
 
-<main class="main">
+<main class="main" th:with="hasEvidence=${!#lists.isEmpty(evidenceViews)}">
 
     <a href="/" class="link-back">&larr; New claim</a>
 
@@ -27,7 +27,7 @@
     </div>
 
     <!-- Claim bubble -->
-    <section class="chat-block" th:with="hasEvidence=${!#lists.isEmpty(evidenceViews)}">
+    <section class="chat-block">
         <div class="chat-label">You</div>
         <div class="chat-bubble chat-bubble-user">
             <p th:text="${claim}">Claim text</p>

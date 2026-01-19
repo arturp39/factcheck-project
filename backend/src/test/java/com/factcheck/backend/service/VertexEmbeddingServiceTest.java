@@ -1,5 +1,6 @@
 package com.factcheck.backend.service;
 
+import com.factcheck.backend.exception.VertexServiceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -62,7 +63,7 @@ class VertexEmbeddingServiceTest {
                 .thenReturn(httpResp);
 
         assertThatThrownBy(() -> embeddingService.embedText("text"))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(VertexServiceException.class)
                 .hasMessageContaining("Embedding error 500");
     }
 
@@ -90,7 +91,7 @@ class VertexEmbeddingServiceTest {
                 .thenReturn(httpResp);
 
         assertThatThrownBy(() -> embeddingService.embedText("text"))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(VertexServiceException.class)
                 .hasMessageContaining("No embeddings.values field");
     }
 
@@ -110,7 +111,7 @@ class VertexEmbeddingServiceTest {
         when(vertexApiClient.postJson(anyString(), anyString())).thenReturn(httpResp);
 
         assertThatThrownBy(() -> embeddingService.embedText("text"))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(VertexServiceException.class)
                 .hasMessageContaining("No predictions field in embedding response");
     }
 

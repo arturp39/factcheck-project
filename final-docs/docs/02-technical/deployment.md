@@ -51,6 +51,7 @@ Cloud Build YAMLs build container images per service and deploy to Cloud Run.
 | NLP_SERVICE_RETRY_MAX_ATTEMPTS | NLP retry attempts for 429/503 | 3 |
 | NLP_SERVICE_RETRY_INITIAL_BACKOFF_MS | NLP retry backoff start | 500 |
 | NLP_SERVICE_RETRY_MAX_BACKOFF_MS | NLP retry backoff cap | 5000 |
+| CHUNKING_SEMANTIC_MAX_SENTENCES_PER_REQUEST | Collector semantic embedding batch size | 100 |
 | VERTEX_PROJECT_ID | GCP project | my-project |
 | CLOUD_TASKS_PROJECT_ID | GCP project for Cloud Tasks | my-project |
 | CLOUD_TASKS_LOCATION | Cloud Tasks region | us-central1 |

@@ -3,16 +3,19 @@ package com.factcheck.backend.service;
 import com.factcheck.backend.dto.ArticleDto;
 import com.factcheck.backend.entity.ClaimFollowup;
 import com.factcheck.backend.entity.ClaimLog;
+import com.factcheck.backend.exception.EvidenceSearchException;
+import com.factcheck.backend.exception.NlpServiceException;
+import com.factcheck.backend.exception.WeaviateException;
 import com.factcheck.backend.integration.nlp.NlpServiceClient;
 import com.factcheck.backend.repository.ClaimFollowupRepository;
 import com.factcheck.backend.repository.ClaimLogRepository;
 import com.factcheck.backend.service.WeaviateClientService.EvidenceChunk;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Set;
@@ -82,9 +85,12 @@ public class ClaimService {
                     ))
                     .toList();
 
+        } catch (NlpServiceException | WeaviateException | EvidenceSearchException e) {
+            log.error("Vector search failed for claim='{}'", claim, e);
+            throw e;
         } catch (Exception e) {
             log.error("Vector search failed for claim='{}'", claim, e);
-            throw new RuntimeException("Vector search failed: " + e.getMessage(), e);
+            throw new EvidenceSearchException("Vector search failed: " + e.getMessage(), e);
         }
     }
 

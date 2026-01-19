@@ -50,10 +50,10 @@ public class NlpServiceClient {
                     EmbedResponse.class
             );
 
-            if (resp == null || !resp.getStatusCode().is2xxSuccessful()) {
+            if (!resp.getStatusCode().is2xxSuccessful()) {
                 throw new NlpServiceException(
                         "NLP embed failed: HTTP status " +
-                                (resp != null ? resp.getStatusCode() : "null response")
+                                resp.getStatusCode().value()
                 );
             }
 
@@ -74,12 +74,12 @@ public class NlpServiceClient {
         EmbedResponse response = embed(Collections.singletonList(text), correlationId);
 
         if (response.getEmbeddings() == null || response.getEmbeddings().isEmpty()) {
-            throw new IllegalStateException("NLP embed response has no embeddings");
+            throw new NlpServiceException("NLP embed response has no embeddings");
         }
 
         List<Double> first = response.getEmbeddings().getFirst();
         if (first == null || first.isEmpty()) {
-            throw new IllegalStateException("First embedding vector is empty");
+            throw new NlpServiceException("First embedding vector is empty");
         }
 
         float[] vector = new float[first.size()];

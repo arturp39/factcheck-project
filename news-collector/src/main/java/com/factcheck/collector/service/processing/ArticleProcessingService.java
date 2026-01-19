@@ -46,6 +46,9 @@ public class ArticleProcessingService {
     @Value("${chunking.semantic-min-sentences:10}")
     private int semanticMinSentences;
 
+    @Value("${chunking.semantic-max-sentences-per-request:100}")
+    private int semanticMaxSentencesPerRequest;
+
     public ChunkingResult createChunks(Article article, String fullText, String correlationId) {
         PreprocessResponse response = nlpClient.preprocess(fullText, correlationId);
         List<String> sentences = response.getSentences();
@@ -56,12 +59,7 @@ public class ArticleProcessingService {
         }
 
         try {
-            SentenceEmbedRequest embedReq = new SentenceEmbedRequest();
-            embedReq.setSentences(sentences);
-            embedReq.setCorrelationId(correlationId);
-
-            SentenceEmbedResponse embedResp = nlpClient.embedSentences(embedReq);
-            List<List<Double>> sentenceEmbeddings = embedResp.getEmbeddings();
+            List<List<Double>> sentenceEmbeddings = embedSentencesBatched(sentences, correlationId);
 
             List<Integer> boundaries = boundaryDetector.detectBoundaries(
                     sentences,
@@ -92,5 +90,42 @@ public class ArticleProcessingService {
             List<String> chunks = ChunkingUtils.chunkSentences(sentences);
             return new ChunkingResult(chunks, null, false);
         }
+    }
+
+    private List<List<Double>> embedSentencesBatched(List<String> sentences, String correlationId) {
+        if (sentences == null || sentences.isEmpty()) {
+            throw new IllegalArgumentException("Sentences are required for semantic chunking");
+        }
+
+        int batchSize = Math.max(1, semanticMaxSentencesPerRequest);
+        if (sentences.size() > batchSize) {
+            log.info(
+                    "Embedding sentences in {} batches (total sentences={})",
+                    (int) Math.ceil((double) sentences.size() / batchSize),
+                    sentences.size()
+            );
+        }
+
+        List<List<Double>> allEmbeddings = new java.util.ArrayList<>(sentences.size());
+        for (int i = 0; i < sentences.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, sentences.size());
+            List<String> batch = sentences.subList(i, end);
+
+            SentenceEmbedRequest embedReq = new SentenceEmbedRequest();
+            embedReq.setSentences(batch);
+            embedReq.setCorrelationId(correlationId);
+
+            SentenceEmbedResponse embedResp = nlpClient.embedSentences(embedReq);
+            List<List<Double>> batchEmbeddings = embedResp.getEmbeddings();
+            if (batchEmbeddings == null || batchEmbeddings.size() != batch.size()) {
+                throw new IllegalStateException(
+                        "Sentence embedding count mismatch: expected " + batch.size()
+                                + " got " + (batchEmbeddings == null ? 0 : batchEmbeddings.size())
+                );
+            }
+            allEmbeddings.addAll(batchEmbeddings);
+        }
+
+        return allEmbeddings;
     }
 }
