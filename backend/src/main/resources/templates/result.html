@@ -163,7 +163,7 @@
                     </div>
                     <div class="evidence-meta">
                         <span th:if="${!#strings.isEmpty(e.source)}"
-                              th:text="'Source: ' + e.source">
+                              th:text="|Source: ${e.source}|">
                             Source name
                         </span>
                         <span th:if="${e.publishedAt != null}"
@@ -208,14 +208,31 @@
     document.addEventListener('DOMContentLoaded', () => {
         const toggles = document.querySelectorAll('.evidence-toggle');
         toggles.forEach((toggle) => {
-            toggle.addEventListener('click', () => {
-                const chunk = toggle.closest('.evidence-chunk');
-                if (!chunk) return;
-                const text = chunk.querySelector('.evidence-text');
-                if (!text) return;
+            const chunk = toggle.closest('.evidence-chunk');
+            const text = chunk ? chunk.querySelector('.evidence-text') : null;
+            if (!chunk || !text) {
+                toggle.remove();
+                return;
+            }
 
+            const collapsedClass = 'evidence-text-collapsed';
+            if (!text.classList.contains(collapsedClass)) {
+                toggle.remove();
+                return;
+            }
+
+            const collapsedHeight = text.getBoundingClientRect().height;
+            text.classList.remove(collapsedClass);
+            const fullHeight = text.getBoundingClientRect().height;
+            if (fullHeight <= collapsedHeight + 1) {
+                toggle.remove();
+                return;
+            }
+            text.classList.add(collapsedClass);
+
+            toggle.addEventListener('click', () => {
                 const expanded = chunk.classList.toggle('is-expanded');
-                text.classList.toggle('evidence-text-collapsed', !expanded);
+                text.classList.toggle(collapsedClass, !expanded);
                 toggle.textContent = expanded ? 'Show less' : 'Show more';
                 toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             });
