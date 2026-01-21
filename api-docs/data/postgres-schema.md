@@ -13,7 +13,7 @@ Tables
 - `claim_log`
   - `id` BIGSERIAL PK
   - `claim_text` TEXT NOT NULL
-  - `owner_username` VARCHAR NOT NULL
+  - `owner_username` VARCHAR(120) NOT NULL
   - `created_at` TIMESTAMPTZ DEFAULT now()
   - `model_answer` TEXT (raw LLM output)
   - `verdict` VARCHAR(255)
@@ -24,9 +24,9 @@ Tables
 
 - `app_user`
   - `id` BIGSERIAL PK
-  - `username` VARCHAR NOT NULL (unique)
-  - `password_hash` VARCHAR NOT NULL
-  - `role` VARCHAR NOT NULL
+  - `username` VARCHAR(120) NOT NULL (unique)
+  - `password_hash` VARCHAR(255) NOT NULL
+  - `role` VARCHAR(20) NOT NULL
   - `created_at` TIMESTAMPTZ DEFAULT now()
   - Index: `idx_app_user_username`
 
@@ -57,6 +57,8 @@ Tables
   - `website_url` TEXT
   - `mbfc_source_id` FK -> `content.mbfc_sources(mbfc_source_id)`
   - `created_at`, `updated_at` TIMESTAMPTZ DEFAULT now()
+  - Unique index: `ux_publishers_name`
+  - Index: `idx_publishers_mbfc_source_id`
 
 - `content.source_endpoints`
   - `id` BIGSERIAL PK
@@ -76,6 +78,8 @@ Tables
   - `block_count` INT NOT NULL DEFAULT 0
   - `created_at`, `updated_at` TIMESTAMPTZ DEFAULT now()
   - Constraint: RSS requires `rss_url`, API requires `api_provider` + `api_query`
+  - Unique index: `ux_source_endpoints_unique`
+  - Index: `idx_source_endpoints_publisher`
 
 - `content.articles`
   - `id` BIGSERIAL PK
@@ -99,6 +103,9 @@ Tables
   - `weaviate_indexed` BOOLEAN NOT NULL DEFAULT FALSE
   - `created_at`, `updated_at` TIMESTAMPTZ DEFAULT now()
   - Unique: `(publisher_id, canonical_url_hash)`
+  - Index: `idx_articles_published_date`
+  - Index: `idx_articles_status`
+  - Constraint: `canonical_url` and `canonical_url_hash` must be non-empty
 
 - `content.article_content`
   - `article_id` PK/FK -> `content.articles(id)` (ON DELETE CASCADE)
@@ -112,6 +119,7 @@ Tables
   - `source_item_id` TEXT NOT NULL
   - `fetched_at` TIMESTAMPTZ DEFAULT now()
   - Unique: `(source_endpoint_id, source_item_id)`
+  - Index: `idx_article_sources_article`
 
 - `content.ingestion_runs`
   - `id` BIGSERIAL PK
@@ -121,6 +129,7 @@ Tables
   - `status` content.ingestion_run_status NOT NULL
   - `correlation_id` UUID NOT NULL
   - Unique: single RUNNING row (partial unique index)
+  - Index: `idx_ingestion_runs_started_at`
 
 - `content.ingestion_logs`
   - `id` BIGSERIAL PK
@@ -136,6 +145,10 @@ Tables
   - `error_details` TEXT
   - `correlation_id` UUID NOT NULL
   - Unique: `(run_id, source_endpoint_id)` when `run_id` is not null
+  - Index: `idx_ingestion_logs_run`
+  - Index: `idx_ingestion_logs_source_endpoint`
+  - Index: `idx_ingestion_logs_started_at`
+  - Index: `idx_ingestion_logs_run_pending` (partial, `completed_at` is null)
 
 - `content.mbfc_sources`
   - `mbfc_source_id` BIGINT PK
@@ -149,4 +162,5 @@ Tables
   - `source_url_domain` TEXT
   - `credibility` TEXT
   - `synced_at` TIMESTAMPTZ DEFAULT now()
+  - Index: `idx_mbfc_sources_domain`
 

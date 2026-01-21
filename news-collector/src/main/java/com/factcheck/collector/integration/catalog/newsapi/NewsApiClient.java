@@ -1,5 +1,6 @@
 package com.factcheck.collector.integration.catalog.newsapi;
 
+import com.factcheck.collector.exception.NewsApiRateLimitException;
 import com.factcheck.collector.integration.catalog.newsapi.dto.NewsApiEverythingResponse;
 import com.factcheck.collector.integration.catalog.newsapi.dto.NewsApiSourcesResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -23,6 +26,7 @@ public class NewsApiClient {
 
     private final NewsApiProperties properties;
     private final ObjectMapper objectMapper;
+    private static final Pattern API_KEY_PATTERN = Pattern.compile("([?&]apiKey=)[^&]+");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -100,12 +104,22 @@ public class NewsApiClient {
                     .GET()
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 429) {
+                Integer retryAfterSeconds = parseRetryAfter(response);
+                throw new NewsApiRateLimitException(
+                        "NewsAPI rate limit reached for " + sanitizeUri(uri),
+                        retryAfterSeconds
+                );
+            }
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException("NewsAPI HTTP " + response.statusCode() + " for " + uri);
+                throw new IllegalStateException("NewsAPI HTTP " + response.statusCode() + " for " + sanitizeUri(uri));
             }
             return objectMapper.readValue(response.body(), responseType);
         } catch (Exception e) {
-            throw new IllegalStateException("NewsAPI request failed for " + uri, e);
+            if (e instanceof NewsApiRateLimitException rateLimit) {
+                throw rateLimit;
+            }
+            throw new IllegalStateException("NewsAPI request failed for " + sanitizeUri(uri), e);
         }
     }
 
@@ -115,5 +129,24 @@ public class NewsApiClient {
             String errCode = code != null ? code : "unknown";
             throw new IllegalStateException("NewsAPI error [" + errCode + "]: " + detail);
         }
+    }
+
+    private Integer parseRetryAfter(HttpResponse<?> response) {
+        Optional<String> retryAfter = response.headers().firstValue("Retry-After");
+        if (retryAfter.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(retryAfter.get());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private String sanitizeUri(URI uri) {
+        if (uri == null) {
+            return "";
+        }
+        return API_KEY_PATTERN.matcher(uri.toString()).replaceAll("$1REDACTED");
     }
 }

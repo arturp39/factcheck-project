@@ -4,6 +4,7 @@ import com.factcheck.collector.dto.ErrorResponse;
 import com.factcheck.collector.exception.FetchException;
 import com.factcheck.collector.exception.IngestionRunAlreadyRunningException;
 import com.factcheck.collector.exception.MbfcQuotaExceededException;
+import com.factcheck.collector.exception.NewsApiRateLimitException;
 import com.factcheck.collector.exception.NlpServiceException;
 import com.factcheck.collector.exception.ProcessingFailedException;
 import com.factcheck.collector.exception.WeaviateException;
@@ -33,6 +34,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MbfcQuotaExceededException.class)
     public ResponseEntity<ErrorResponse> handleMbfcQuota(MbfcQuotaExceededException ex, HttpServletRequest request) {
+        return buildWarn(ex, request, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @ExceptionHandler(NewsApiRateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleNewsApiRateLimit(NewsApiRateLimitException ex, HttpServletRequest request) {
         return buildWarn(ex, request, HttpStatus.TOO_MANY_REQUESTS);
     }
 

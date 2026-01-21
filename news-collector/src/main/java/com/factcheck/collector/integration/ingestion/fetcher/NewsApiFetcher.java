@@ -3,6 +3,7 @@ package com.factcheck.collector.integration.ingestion.fetcher;
 import com.factcheck.collector.domain.entity.SourceEndpoint;
 import com.factcheck.collector.domain.enums.SourceKind;
 import com.factcheck.collector.exception.FetchException;
+import com.factcheck.collector.exception.NewsApiRateLimitException;
 import com.factcheck.collector.integration.catalog.newsapi.NewsApiClient;
 import com.factcheck.collector.integration.catalog.newsapi.NewsApiProperties;
 import com.factcheck.collector.integration.catalog.newsapi.dto.NewsApiArticle;
@@ -61,7 +62,7 @@ public class NewsApiFetcher implements SourceFetcher, BatchResettableFetcher {
 
             batchCache = buildBatch();
 
-            if (batchCache == null || !batchCache.isKnownEndpoint(sourceEndpoint.getId())) {
+            if (!batchCache.isKnownEndpoint(sourceEndpoint.getId())) {
                 // Endpoint not included in this batch.
                 if (requestLimitReached) {
                     log.info("NewsAPI request limit reached, deferring endpoint id={}", sourceEndpoint.getId());
@@ -116,7 +117,6 @@ public class NewsApiFetcher implements SourceFetcher, BatchResettableFetcher {
             int maxSources = cap("maxSourcesPerRequest", properties.getMaxSourcesPerRequest(), MAX_SOURCES_LIMIT);
             int maxPages = cap("maxPagesPerBatch", properties.getMaxPagesPerBatch(), MAX_PAGES_LIMIT);
             int maxRequests = cap("maxRequestsPerIngestion", properties.getMaxRequestsPerIngestion(), MAX_REQUESTS_LIMIT);
-            int pageSize = NEWSAPI_DEFAULT_PAGE_SIZE; // NewsAPI default; do not send pageSize.
 
             String sortBy = properties.getSortBy();
             if (sortBy == null || sortBy.isBlank()) sortBy = "publishedAt";
@@ -188,11 +188,24 @@ public class NewsApiFetcher implements SourceFetcher, BatchResettableFetcher {
                         break;
                     }
 
-                    NewsApiEverythingResponse response = newsApiClient.fetchEverything(
-                            sourcesParam,
-                            sortBy,
-                            page
-                    );
+                    NewsApiEverythingResponse response;
+                    try {
+                        response = newsApiClient.fetchEverything(
+                                sourcesParam,
+                                sortBy,
+                                page
+                        );
+                    } catch (NewsApiRateLimitException rateLimit) {
+                        limitReached = true;
+                        requestLimitReached = true;
+                        Integer retryAfterSeconds = rateLimit.getRetryAfterSeconds();
+                        if (retryAfterSeconds != null) {
+                            log.warn("NewsAPI rate limit reached; retry-after={}s", retryAfterSeconds);
+                        } else {
+                            log.warn("NewsAPI rate limit reached");
+                        }
+                        break;
+                    }
                     requestCount++;
 
                     List<NewsApiArticle> articles = response.articles();
@@ -230,7 +243,7 @@ public class NewsApiFetcher implements SourceFetcher, BatchResettableFetcher {
                     }
 
                     // Short page means we're done.
-                    if (articles.size() < pageSize) {
+                    if (articles.size() < NEWSAPI_DEFAULT_PAGE_SIZE) {
                         break;
                     }
                 }
